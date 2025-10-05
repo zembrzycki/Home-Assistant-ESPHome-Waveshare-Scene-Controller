@@ -24,8 +24,7 @@ This project integrates directly with [Home Assistant](https://www.home-assistan
   Headers, labels, and layouts styled for readability and consistency.
 
 ## 🛠️ Requirements
-- ESP32 board (tested with **ESP32-WROOM**)
-- Waveshare display (tested with **Waveshare 4.3" RGB**)
+- Waveshare display (tested Waveshare ESP32-S3-Touch-LCD-4-3B panel)
 - Home Assistant instance with ESPHome integration
 - LVGL support enabled in ESPHome (built-in)
 
@@ -39,6 +38,7 @@ This project integrates directly with [Home Assistant](https://www.home-assistan
 4.  Compile and upload with ESPHome:
     esphome run waveshare.yaml
 5.  Add the device in Home Assistant → Integrations.
+6.  
 
 ![IMG_6874](https://github.com/user-attachments/assets/a904ddd5-30b8-4418-8ce4-49411fbe619f)
 
