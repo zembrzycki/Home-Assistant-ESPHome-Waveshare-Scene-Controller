@@ -28,6 +28,9 @@ substitutions:
 
   # Media Player
   media_player_entity: "media_player.kitchen"
+  
+  # Home Assistant URL
+  ha_base_url: "http://10.10.10.10:8123"
 
 esphome:
   name: waveshare-panel
@@ -175,10 +178,31 @@ font:
       "\U000F0594", # night
     ]
 
+http_request:
+
 image:
-  - file: "custom/blank-1x1.png"
-    id: album_artwork_resource
+  - id: test_embedded_image
+    file: "custom/test-red.bmp"
     type: RGB565
+    resize: 160x160
+
+online_image:
+  - id: media_online_art
+    type: RGB565
+    format: BMP
+    url: "${ha_base_url}/local/esp_album_art.bmp"
+    update_interval: never
+    on_download_finished:
+      - lambda: |-
+          ESP_LOGI("media", "✓ BMP downloaded, updating display");
+          auto img = id(media_album_widget);
+          if (img != nullptr) {
+            lv_img_set_src(img, id(media_online_art).get_lv_img_dsc());
+            lv_obj_invalidate(img);
+          }
+    on_error:
+      - lambda: |-
+          ESP_LOGW("media", "✗ Download failed");
 
 # ---- Binary Sensors for HA light states (generic indexed IDs) ----
 binary_sensor:
@@ -373,7 +397,8 @@ text_sensor:
             lv_label_set_text(id(lbl_weather_icon), icon);
 
 
-  # ---- Media Player Attributes (from HA -> ESPHome) ----
+# ---- Media Player Attributes (from HA -> ESPHome) ----
+
   - platform: homeassistant
     id: mp_title
     entity_id: ${media_player_entity}
@@ -387,6 +412,9 @@ text_sensor:
             } else {
               lv_label_set_text(id(lbl_media_title), id(mp_title).state.c_str());
             }
+        # Trigger album art update when title changes
+        - delay: 2s  # Wait for automation to create new image
+        - component.update: media_online_art
 
   - platform: homeassistant
     id: mp_artist
@@ -416,6 +444,16 @@ text_sensor:
               lv_label_set_text(id(lbl_media_album), id(mp_album).state.c_str());
             }
 
+  - platform: homeassistant
+    id: mp_entity_picture
+    entity_id: ${media_player_entity}
+    attribute: entity_picture
+    internal: true
+    on_value:
+      then:
+        # Trigger album art update when entity_picture changes
+        - delay: 2s  # Wait for automation to create new image
+        - component.update: media_online_art
 
 # ---- Weather attribute sensors ----
 sensor:
@@ -468,17 +506,16 @@ sensor:
     attribute: temperature
     internal: true
 
-# ---- Medis Player (Home Assistant -> ESPHome) ----
+# ---- Volume (media) ----
   - platform: homeassistant
     id: mp_volume
     entity_id: ${media_player_entity}
     attribute: volume_level
     internal: true
 
-
-
 # ---- LVGL Config ----
 lvgl:
+  color_depth: 16
   displays:
     - my_display
   touchscreens:
@@ -846,7 +883,6 @@ lvgl:
         - obj:
             height: 48
 
-
     # Blinds Page
     - id: blinds_page
       layout:
@@ -947,9 +983,6 @@ lvgl:
         - obj:
             height: 48
 
-
-
-
     # Thermostat Page
     - id: thermostat_page
       bg_color: 0x000000
@@ -1035,8 +1068,6 @@ lvgl:
             align: CENTER
             y: 150
 
-
-
     # Media Player
     - id: media_player_page
       layout:
@@ -1047,8 +1078,9 @@ lvgl:
       bg_color: 0x000000
       widgets:
 
-        # Header (consistent with other pages)
+        # Header (full width at top)
         - obj:
+            width: 100%
             height: 48
             styles: header_style
             widgets:
@@ -1059,117 +1091,160 @@ lvgl:
                   align: TOP_LEFT
                   text_align: left
 
-        # metadata row
+        # Content row (album art + text/controls)
         - obj:
             width: 100%
-            flex_grow: 1 
-            layout:
-              type: flex
-              flex_flow: column
-              flex_align_main: start
-              flex_align_cross: start
-            pad_left: 200       # correct property for indentation
-            bg_color: 0x000000
-            widgets:
-              - label:
-                  id: lbl_media_title
-                  text: "--"
-                  text_font: roboto36
-                  text_color: 0xCC9900
-                  text_align: LEFT
-                  width: 100%
-              - obj:  # spacer
-                  height: 6
-                  width: 100%
-              - label:
-                  id: lbl_media_artist
-                  text: "--"
-                  text_font: roboto24
-                  text_color: 0xCC9900
-                  text_align: LEFT
-                  width: 100%
-              - obj:
-                  height: 6
-                  width: 100%
-              - label:
-                  id: lbl_media_album
-                  text: ""
-                  text_font: roboto24
-                  text_color: 0xCC9900
-                  text_align: LEFT
-                  width: 100%
-
-        # Controls row (Play/Pause + Volume)
-        - obj:
-            width: 100%
-            flex_grow: 1 
+            flex_grow: 1
             layout:
               type: flex
               flex_flow: row
-              flex_align_main: center
-              flex_align_cross: center
-              pad_column: 20
+              flex_align_main: start
+              flex_align_cross: start
+            bg_color: 0x000000
             widgets:
-              - button:
-                  id: btn_volume_down
-                  width: 120
-                  height: 80
-                  on_short_click:
-                    - homeassistant.service:
-                        service: media_player.volume_set
-                        data:
-                          entity_id: ${media_player_entity}
-                          volume_level: !lambda |-
-                            float v = id(mp_volume).state;
-                            if (isnan(v)) v = 0.2;
-                            v -= 0.05;
-                            if (v < 0.0) v = 0.0;
-                            return v;
+
+              # LEFT COLUMN — ALBUM ARTWORK  
+              - obj:
+                  width: 180
+                  height: 180
+                  layout:
+                    type: flex
+                    flex_flow: column
+                    flex_align_main: center
+                    flex_align_cross: center
+                  pad_all: 10
                   widgets:
-                    - label:
-                        text: "\U000F075E"
-                        text_font: mdi_42
-                        id: lbl_vol_down
+                    - image:
+                        id: media_album_widget
+                        src: media_online_art
+                        width: 160
+                        height: 160
                         align: center
 
-              - button:
-                  id: btn_play_pause
-                  width: 160
-                  height: 96
-                  on_short_click:
-                    - homeassistant.service:
-                        service: media_player.media_play_pause
-                        data:
-                          entity_id: ${media_player_entity}
+              # RIGHT COLUMN — TEXT AND CONTROLS
+              - obj:
+                  flex_grow: 1
+                  width: 100%
+                  height: 100%
+                  layout:
+                    type: flex
+                    flex_flow: column
+                    flex_align_main: start
+                    flex_align_cross: start
+                  bg_color: 0x000000
                   widgets:
-                    - label:
-                        id: lbl_play_icon
-                        text: "\U000F040E"
-                        text_font: mdi_42
-                        align: center
 
-              - button:
-                  id: btn_volume_up
-                  width: 120
-                  height: 80
-                  on_short_click:
-                    - homeassistant.service:
-                        service: media_player.volume_set
-                        data:
-                          entity_id: ${media_player_entity}
-                          volume_level: !lambda |-
-                            float v = id(mp_volume).state;
-                            if (isnan(v)) v = 0.2;
-                            v += 0.05;
-                            if (v > 1.0) v = 1.0;
-                            return v;
-                  widgets:
-                    - label:
-                        text: "\U000F075D"
-                        text_font: mdi_42
-                        id: lbl_vol_up
-                        align: center
+                    # Metadata (Title / Artist / Album)
+                    - obj:
+                        width: 100%
+                        flex_grow: 1
+                        layout:
+                          type: flex
+                          flex_flow: column
+                          flex_align_main: start
+                          flex_align_cross: start
+                        pad_left: 20
+                        bg_color: 0x000000
+                        widgets:
+                          - label:
+                              id: lbl_media_title
+                              text: "--"
+                              text_font: roboto36
+                              text_color: 0xCC9900
+                              text_align: LEFT
+                              width: 100%
 
+                          - obj: { height: 6, width: 100% }
+
+                          - label:
+                              id: lbl_media_artist
+                              text: "--"
+                              text_font: roboto24
+                              text_color: 0xCC9900
+                              text_align: LEFT
+                              width: 100%
+
+                          - obj: { height: 6, width: 100% }
+
+                          - label:
+                              id: lbl_media_album
+                              text: ""
+                              text_font: roboto24
+                              text_color: 0xCC9900
+                              text_align: LEFT
+                              width: 100%
+
+                    # Controls Row
+                    - obj:
+                        width: 100%
+                        flex_grow: 1
+                        layout:
+                          type: flex
+                          flex_flow: row
+                          flex_align_main: center
+                          flex_align_cross: center
+                          pad_column: 20
+                        widgets:
+
+                          - button:
+                              id: btn_volume_down
+                              width: 120
+                              height: 80
+                              on_short_click:
+                                - homeassistant.service:
+                                    service: media_player.volume_set
+                                    data:
+                                      entity_id: ${media_player_entity}
+                                      volume_level: !lambda |-
+                                        float v = id(mp_volume).state;
+                                        if (isnan(v)) v = 0.2;
+                                        v -= 0.05;
+                                        if (v < 0.0) v = 0.0;
+                                        return v;
+                              widgets:
+                                - label:
+                                    text: "\U000F075E"
+                                    text_font: mdi_42
+                                    id: lbl_vol_down
+                                    align: center
+
+                          - button:
+                              id: btn_play_pause
+                              width: 160
+                              height: 96
+                              on_short_click:
+                                - homeassistant.service:
+                                    service: media_player.media_play_pause
+                                    data:
+                                      entity_id: ${media_player_entity}
+                              widgets:
+                                - label:
+                                    id: lbl_play_icon
+                                    text: "\U000F040E"
+                                    text_font: mdi_42
+                                    align: center
+
+                          - button:
+                              id: btn_volume_up
+                              width: 120
+                              height: 80
+                              on_short_click:
+                                - homeassistant.service:
+                                    service: media_player.volume_set
+                                    data:
+                                      entity_id: ${media_player_entity}
+                                      volume_level: !lambda |-
+                                        float v = id(mp_volume).state;
+                                        if (isnan(v)) v = 0.2;
+                                        v += 0.05;
+                                        if (v > 1.0) v = 1.0;
+                                        return v;
+                              widgets:
+                                - label:
+                                    text: "\U000F075D"
+                                    text_font: mdi_42
+                                    id: lbl_vol_up
+                                    align: center
 
   top_layer:
     widgets:
@@ -1210,8 +1285,6 @@ lvgl:
                 widgets:
                   - label:
                       text: "\uF054"
-
-                      
 
 interval:
   - interval: 5s
@@ -1295,21 +1368,17 @@ interval:
           }
 
           // ---- Thermostat ----
-          // --- Sync arc with thermostat target temp ---
           if (!isnan(id(climate_target_temp).state)) {
             int arc_val = (int)(id(climate_target_temp).state * 10);
             if (lv_arc_get_value(id(th_setpoint_arc)) != arc_val) {
               lv_arc_set_value(id(th_setpoint_arc), arc_val);
             }
-
-            // Update setpoint label inside arc
             snprintf(buf, sizeof(buf), "%.1f°", id(climate_target_temp).state);
             lv_label_set_text(id(th_setpoint_label), buf);
           } else {
             lv_label_set_text(id(th_setpoint_label), "--.-°");
           }
 
-          // --- Current temperature label ---
           if (!isnan(id(climate_current_temp).state)) {
             snprintf(buf, sizeof(buf), "%.1f°", id(climate_current_temp).state);
             lv_label_set_text(id(th_temperature_label), buf);
@@ -1317,14 +1386,12 @@ interval:
             lv_label_set_text(id(th_temperature_label), "--.-°");
           }
 
-          // --- HVAC action label ---
           if (!id(climate_hvac_action).state.empty()) {
             lv_label_set_text(id(th_action_label), id(climate_hvac_action).state.c_str());
           } else {
             lv_label_set_text(id(th_action_label), "--");
           }
 
-          // --- Mode badge (COOL/HEAT/OFF) ---
           if (!id(climate_entity_state).state.empty()) {
             if (id(climate_entity_state).state == "heat") {
               lv_label_set_text(id(th_mode_label), "HEAT");
@@ -1337,8 +1404,21 @@ interval:
             lv_label_set_text(id(th_mode_label), "OFF");
           }
 
-          // ---- Media Player ----
-          if (!id(mp_title).state.empty()) lv_label_set_text(id(lbl_media_title), id(mp_title).state.c_str());
-          if (!id(mp_artist).state.empty()) lv_label_set_text(id(lbl_media_artist), id(mp_artist).state.c_str());
-          if (!id(mp_album).state.empty()) lv_label_set_text(id(lbl_media_album), id(mp_album).state.c_str());
+          // ---- Media Player text fields ----
+          if (!id(mp_title).state.empty()) {
+            lv_label_set_text(id(lbl_media_title), id(mp_title).state.c_str());
+          } else {
+            lv_label_set_text(id(lbl_media_title), "--");
+          }
 
+          if (!id(mp_artist).state.empty()) {
+            lv_label_set_text(id(lbl_media_artist), id(mp_artist).state.c_str());
+          } else {
+            lv_label_set_text(id(lbl_media_artist), "--");
+          }
+
+          if (!id(mp_album).state.empty()) {
+            lv_label_set_text(id(lbl_media_album), id(mp_album).state.c_str());
+          } else {
+            lv_label_set_text(id(lbl_media_album), "");
+          }
