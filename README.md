@@ -42,14 +42,13 @@ This project integrates directly with [Home Assistant](https://www.home-assistan
 
 ![IMG_6874](https://github.com/user-attachments/assets/a904ddd5-30b8-4418-8ce4-49411fbe619f)
 
+![IMG_0783](https://github.com/user-attachments/assets/de2c36c5-80bd-4e6d-b383-a361fe10a42d)
+
 ![IMG_6867](https://github.com/user-attachments/assets/1de4182e-911a-4392-92a2-ce2cf36a468a)
 
 ![IMG_6871](https://github.com/user-attachments/assets/7157b51e-23a6-4824-b150-a03ecfa286e5)
 
 ![IMG_6868](https://github.com/user-attachments/assets/81a52751-f4fd-4495-81eb-258b6e9988ae)
-
-![IMG_6866](https://github.com/user-attachments/assets/3723311f-7263-4fb6-87a4-42b78f2951a3)
-
 
     
 ## 📝 Roadmap
