@@ -38,6 +38,8 @@ This project integrates directly with [Home Assistant](https://www.home-assistan
 4.  Compile and upload with ESPHome:
     esphome run waveshare.yaml
 5.  Add the device in Home Assistant → Integrations.
+6.  Media artwork conversion script provided if needed. 
+    (Also see my HACS artwork conversion integration)
 
 
 ![IMG_6874](https://github.com/user-attachments/assets/a904ddd5-30b8-4418-8ce4-49411fbe619f)
