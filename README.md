@@ -38,7 +38,7 @@ This project integrates directly with [Home Assistant](https://www.home-assistan
 4.  Compile and upload with ESPHome:
     esphome run waveshare.yaml
 5.  Add the device in Home Assistant → Integrations.
-6.  
+
 
 ![IMG_6874](https://github.com/user-attachments/assets/a904ddd5-30b8-4418-8ce4-49411fbe619f)
 
@@ -51,10 +51,6 @@ This project integrates directly with [Home Assistant](https://www.home-assistan
 ![IMG_6868](https://github.com/user-attachments/assets/81a52751-f4fd-4495-81eb-258b6e9988ae)
 
     
-## 📝 Roadmap
- -  Add media artwork support
- -  Expand weather display with icons
- -  Add more advanced pages (security, cameras, etc.)
 
 ## 🤝 Contributing
 Contributions are welcome! Please fork the repository and open a pull request with improvements.
