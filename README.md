@@ -130,7 +130,7 @@ This configuration works with the [Media Album Art Converter](https://github.com
 ## 📱 Pages & Navigation
 
 
-![IMG_6874](https://github.com/user-attachments/assets/a904ddd5-30b8-4418-8ce4-49411fbe619f)
+![IMG_0818](https://github.com/user-attachments/assets/8f176a42-8bcc-47f9-b843-487462b87576)
 
 ![IMG_0783](https://github.com/user-attachments/assets/de2c36c5-80bd-4e6d-b383-a361fe10a42d)
 
