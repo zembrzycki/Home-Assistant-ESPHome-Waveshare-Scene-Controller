@@ -134,7 +134,7 @@ This configuration works with the [Media Album Art Converter](https://github.com
 
 ![IMG_0783](https://github.com/user-attachments/assets/de2c36c5-80bd-4e6d-b383-a361fe10a42d)
 
-![IMG_6867](https://github.com/user-attachments/assets/1de4182e-911a-4392-92a2-ce2cf36a468a)
+![IMG_0796](https://github.com/user-attachments/assets/d6bcd5ca-c7b1-4bb1-9ab2-be07330c3aa5)
 
 ![IMG_6871](https://github.com/user-attachments/assets/7157b51e-23a6-4824-b150-a03ecfa286e5)
 
