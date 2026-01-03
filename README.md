@@ -192,9 +192,11 @@ This configuration works with the [Media Album Art Converter](https://github.com
 For backlight dimming, a jumper need to be soldered to test pad "BL" to a data pin of the ESP, i.e. GPIO44, (the fifth pin down on the right side of the ESP32).
 
 
-(https://github.com/user-attachments/files/24413472/ESP32-S3-Touch-LCD-4.3B-Sch.pdf)
+- [ESP32-S3-Touch-LCD Electrical Schematic](https://github.com/user-attachments/files/24413545/ESP32-S3-Touch-LCD-4.3B-Sch.pdf)
+  
 
-![IMG_2020](https://github.com/user-attachments/assets/a394791f-950d-43a0-86b5-22f43e0c7a83)
+![IMG_2020](https://github.com/user-attachments/assets/ab79999b-c92d-4ab9-99e3-9d4ea39b4a72)
+
 
 
 ## 📝 License
