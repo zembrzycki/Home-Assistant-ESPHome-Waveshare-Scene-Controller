@@ -208,5 +208,5 @@ This project is provided as-is for personal use. Feel free to modify and adapt t
 
 ## 🔗 Related Projects
 
-- [Media Album Art Converter](https://github.com/zembrzycki/HACS-integration-convert-media-album-art) - Home Assistant integration for album art conversion
+- [Media Album Art Converter](https://github.com/zembrzycki/convert-media-album-art) - Home Assistant integration for album art conversion
 - [LCD Desk Stand](https://github.com/zembrzycki/waveshare-scene-controller) - 3D printable desk stand/enclosure
