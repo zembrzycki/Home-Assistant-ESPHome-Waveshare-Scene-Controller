@@ -129,16 +129,18 @@ This configuration works with the [Media Album Art Converter](https://github.com
 
 ## 📱 Pages & Navigation
 
+![home](https://github.com/user-attachments/assets/e88471c2-1991-468f-a6f0-f020cf237ace)
 
-![IMG_0818](https://github.com/user-attachments/assets/8f176a42-8bcc-47f9-b843-487462b87576)
+![media](https://github.com/user-attachments/assets/a5dc8717-6de2-4564-bcfb-3d6b888377e1)
 
-![IMG_0783](https://github.com/user-attachments/assets/de2c36c5-80bd-4e6d-b383-a361fe10a42d)
+![thermostat](https://github.com/user-attachments/assets/5707d1c1-b12e-4635-8a9f-31a2e8a99e79)
 
-![IMG_0796](https://github.com/user-attachments/assets/d6bcd5ca-c7b1-4bb1-9ab2-be07330c3aa5)
+![lights](https://github.com/user-attachments/assets/2f2d7c39-de1f-4a71-969a-1e63becba24e)
 
-![IMG_6871](https://github.com/user-attachments/assets/7157b51e-23a6-4824-b150-a03ecfa286e5)
+![blinds](https://github.com/user-attachments/assets/54d62d2d-c5d1-4cb1-be4b-cbe78c3d8372)
 
-![IMG_6868](https://github.com/user-attachments/assets/81a52751-f4fd-4495-81eb-258b6e9988ae)
+![rear2](https://github.com/user-attachments/assets/fdd568e8-902d-4cbe-807a-04c5c2fce5b7)
+
 
 
 ### Page 1: Main Dashboard
@@ -207,3 +209,4 @@ This project is provided as-is for personal use. Feel free to modify and adapt t
 ## 🔗 Related Projects
 
 - [Media Album Art Converter](https://github.com/zembrzycki/HACS-integration-convert-media-album-art) - Home Assistant integration for album art conversion
+- [LCD Desk Stand](https://github.com/zembrzycki/waveshare-scene-controller) - 3D printable desk stand/enclosure
