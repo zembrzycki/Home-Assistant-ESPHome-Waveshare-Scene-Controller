@@ -196,6 +196,8 @@ For backlight dimming, a jumper need to be soldered to test pad "BL" to a data p
 
 - [ESP32-S3-Touch-LCD Electrical Schematic](https://github.com/user-attachments/files/24413545/ESP32-S3-Touch-LCD-4.3B-Sch.pdf)
   
+<img width="538" height="336" alt="Screenshot 2026-01-04 at 6 30 22 pm" src="https://github.com/user-attachments/assets/600a41a9-ef27-4dfb-ba97-9fb5aa3c0a94" />
+
 
 ![IMG_2020](https://github.com/user-attachments/assets/ab79999b-c92d-4ab9-99e3-9d4ea39b4a72)
 
