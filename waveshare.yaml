@@ -67,13 +67,13 @@ substitutions:
   sonos_volume_down: "script.sonos_volume_down"
   sonos_volume_up: "script.sonos_volume_up"
   
-  # Sonos Scripts
-  sonos_script_01: "script.sonos_bpm"
-  sonos_script_02: "script.sonos_chill"
-  sonos_script_03: "script.sonos_elevations"
-  sonos_name_01: "BPM"
-  sonos_name_02: "Chill"
-  sonos_name_03: "Elevations"
+# Sonos Sources (source name must match exactly what Sonos reports)
+  sonos_source_01: "EDM Hits"
+  sonos_source_02: "Ibiza Chill Essentials"  # "Classical Pop Station"
+  sonos_source_03: "danceXL"
+  sonos_name_01: "EDM Hits"
+  sonos_name_02: "Ibiza Chill"
+  sonos_name_03: "Dance XL"
 
   # Automations
   automation_script_01: "script.roborock_clean"
@@ -101,12 +101,14 @@ substitutions:
 esphome:
   name: zrated-office
   platformio_options:
-    board_build.flash_mode: dio
+    build_flags: "-DBOARD_HAS_PSRAM"
     board_build.arduino.memory_type: qio_opi
+    board_build.flash_mode: dio
+    board_upload.maximum_ram_size: 524288
   on_boot:
     priority: -100
     then:
-      - switch.turn_on: backlight_power_enable
+      - delay: 1000ms
       - light.turn_on:
           id: display_backlight
           brightness: !lambda "return id(display_brightness_level).state / 100.0f;"
@@ -114,15 +116,24 @@ esphome:
           id(display_dimmed) = false;
           id(sleep_mode_active) = false;
           ESP_LOGI("startup", "Display backlight enabled on boot");
-          
+
 esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+      CONFIG_SPIRAM_RODATA: "y"
   flash_size: 8MB
 
 logger:
-  level: DEBUG
+  level: WARN
+
+safe_mode:
+  boot_is_good_after: 120s
+  num_attempts: 3
 
 api:
   on_client_connected:
@@ -155,7 +166,8 @@ wifi:
   fast_connect: true
   reboot_timeout: 15min
 
-captive_portal:
+mdns:
+  disabled: false
 
 ota:
   platform: esphome
@@ -298,15 +310,6 @@ switch:
       - light.turn_on:
           id: display_backlight
           brightness: !lambda "return id(display_brightness_level).state / 100.0f;"
-            
-  - platform: gpio
-    id: backlight_power_enable
-    pin:
-      ch422g: ch422g_hub
-      number: 2
-      mode: OUTPUT
-    restore_mode: ALWAYS_ON
-    internal: true
 
 button:
   - platform: template
@@ -320,29 +323,16 @@ button:
       - lvgl.resume:
 
 display:
-  - platform: rpi_dpi_rgb
+  - platform: mipi_rgb
+    model: ESP32-S3-TOUCH-LCD-4.3
     id: my_display
     auto_clear_enabled: false
-    color_order: RGB
-    pclk_frequency: 16MHZ
-    dimensions:
-      width: 800
-      height: 480
-    de_pin: 5
-    hsync_pin: 46
-    vsync_pin: 3
-    pclk_pin: 7
     reset_pin:
       ch422g: ch422g_hub
       number: 3
-    # REMOVE THIS:
-    # enable_pin:
-    #   ch422g: ch422g_hub
-    #   number: 2
-    data_pins:
-      red: [1,2,42,41,40]
-      green: [39,0,45,48,47,21]
-      blue: [14,38,18,17,10]
+    enable_pin:
+      ch422g: ch422g_hub
+      number: 2
 
 touchscreen:
   platform: gt911
@@ -374,8 +364,8 @@ output:
   - platform: ledc
     pin: GPIO44
     id: backlight_pwm
-    frequency: 1000Hz
-    min_power: 0.0    # Changed from 0.1
+    frequency: 25000Hz
+    min_power: 0.0
     zero_means_zero: true
     inverted: true
 
@@ -383,7 +373,7 @@ light:
   - platform: monochromatic
     output: backlight_pwm
     id: display_backlight
-    restore_mode: RESTORE_AND_ON
+    restore_mode: ALWAYS_ON
     default_transition_length: 0.5s
     gamma_correct: 1.0
     internal: true
@@ -450,6 +440,7 @@ font:
       "\U000F00AF", # bluetooth
       "\U000F05A9", # wifi 4 bar
       "\U000F08BE", # cellphone-wireless
+      "\U000F07D0", # home-assistant
     ]
 
   - file: "custom/MaterialDesignIconsDesktop.ttf"
@@ -1024,7 +1015,7 @@ lvgl:
     - my_display
   touchscreens:
     - my_touch
-
+  buffer_size: 12%
   page_wrap: true
 
   theme:
@@ -1116,7 +1107,7 @@ lvgl:
             widgets:
               - label:
                   id: lbl_hastatus
-                  text: "\U000F05A9"
+                  text: "\U000F07D0"
                   text_font: mdi_24
                   hidden: true
                   text_color: 0xCCCCCC
@@ -1399,10 +1390,10 @@ lvgl:
             text_color: 0xCC9900
             text_align: RIGHT
 
-        # Media Artist
+        # Media Album
         - label:
-            id: lbl_media_artist
-            text: "--"
+            id: lbl_media_album
+            text: ""
             x: 280
             y: 175
             width: 480
@@ -1410,10 +1401,10 @@ lvgl:
             text_color: 0xCC9900
             text_align: RIGHT
 
-        # Media Album
+        # Media Artist
         - label:
-            id: lbl_media_album
-            text: ""
+            id: lbl_media_artist
+            text: "--"
             x: 280
             y: 215
             width: 480
@@ -1431,9 +1422,10 @@ lvgl:
             bg_color: 0x333333
             on_short_click:
               - homeassistant.service:
-                  service: script.turn_on
+                  service: media_player.select_source
                   data:
-                    entity_id: ${sonos_script_01}
+                    entity_id: ${media_player_entity}
+                    source: "${sonos_source_01}"
             widgets:
               - label:
                   text: ${sonos_name_01}
@@ -1449,9 +1441,10 @@ lvgl:
             bg_color: 0x333333
             on_short_click:
               - homeassistant.service:
-                  service: script.turn_on
+                  service: media_player.select_source
                   data:
-                    entity_id: ${sonos_script_02}
+                    entity_id: ${media_player_entity}
+                    source: "${sonos_source_02}"
             widgets:
               - label:
                   text: ${sonos_name_02}
@@ -1467,9 +1460,10 @@ lvgl:
             bg_color: 0x333333
             on_short_click:
               - homeassistant.service:
-                  service: script.turn_on
+                  service: media_player.select_source
                   data:
-                    entity_id: ${sonos_script_03}
+                    entity_id: ${media_player_entity}
+                    source: "${sonos_source_03}"
             widgets:
               - label:
                   text: ${sonos_name_03}
