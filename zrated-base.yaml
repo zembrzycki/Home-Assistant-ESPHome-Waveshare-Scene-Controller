@@ -1,0 +1,2767 @@
+# =================================================================
+# zrated-base.yaml
+#
+# Shared/repeatable ESPHome configuration for all "zrated" LVGL touch
+# panels (ESP32-S3-TOUCH-LCD-4.3 / Waveshare board). Pulled in by each
+# device's local YAML via `packages:`.
+#
+# Every substitution below has a placeholder default so this file is
+# valid on its own. Each device's local YAML MUST override every
+# "REPLACE_ME" value (and should review the cosmetic defaults) via its
+# own top-level `substitutions:` block - per ESPHome's packages docs,
+# substitutions in the including (local) file override same-named
+# substitutions defined here.
+#
+# Do NOT put any !secret lookups in this file - ESPHome does not
+# support secrets inside remote/git packages. wifi:, api:, and ota:
+# stay in each device's local YAML.
+# =================================================================
+
+substitutions:
+  # ESPHome-facing URL for the converted album art image (see
+  # convert_media_album_art integration). Compile-time fallback only -
+  # ha_esphome_image_url_sensor overrides this at runtime. Must still be
+  # a syntactically valid URL (ESPHome requires online_image.url to be
+  # a literal at compile time).
+  ha_base_url: "http://placeholder.invalid"
+  # HA sensor entity that reports the live, fully-resolved album art URL
+  # for THIS device's media player. Differs per device/media_player.
+  esphome_image_url_entity: "sensor.REPLACE_ME_esphome_image_url"
+
+  # BLE Presence Device
+  ble_presence_device: "device_tracker.REPLACE_ME_ble_tracker"
+  ble_presence_area: "REPLACE_ME_area"
+
+  # Internet ISP Status
+  router_isp: "sensor.router_isp"
+
+  # Light Buttons
+  light_entity_01: "light.REPLACE_ME_01"
+  light_entity_02: "light.REPLACE_ME_02"
+  light_entity_03: "light.REPLACE_ME_03"
+  light_entity_04: "light.REPLACE_ME_04"
+  light_entity_05: "light.REPLACE_ME_05"
+  light_entity_06: "light.REPLACE_ME_06"
+  light_name_01: "Light 1"
+  light_name_02: "Light 2"
+  light_name_03: "Light 3"
+  light_name_04: "Light 4"
+  light_name_05: "Light 5"
+  light_name_06: "Light 6"
+  # Light Groups (for status tracking)
+  light_group_01: "light.REPLACE_ME_group_01"
+  light_group_02: "light.REPLACE_ME_group_02"
+  light_group_03: "light.REPLACE_ME_group_03"
+  light_group_04: "light.REPLACE_ME_group_04"
+  light_group_05: "light.REPLACE_ME_group_05"
+  light_group_06: "light.REPLACE_ME_group_06"
+
+  # Covers / Shades
+  cover_entity_01: "cover.REPLACE_ME_01"
+  cover_entity_02: "cover.REPLACE_ME_02"
+  cover_entity_03: "cover.REPLACE_ME_03"
+  cover_name_01: "Cover 1"
+  cover_name_02: "Cover 2"
+  cover_name_03: "Cover 3"
+
+  # Ceiling Fans
+  fan_entity_01: "fan.REPLACE_ME_01"
+  fan_entity_02: "fan.REPLACE_ME_02"
+  fan_entity_03: "fan.REPLACE_ME_03"
+  fan_name_01: "Fan 1"
+  fan_name_02: "Fan 2"
+  fan_name_03: "Fan 3"
+
+  # Climate
+  climate_entity_01: "climate.REPLACE_ME_thermostat"
+  hvac_fan_switch: "switch.REPLACE_ME_hvac_fan"
+  hvac_current: "sensor.REPLACE_ME_hvac_current"
+  hvac_chiller: "sensor.REPLACE_ME_hvac_chiller"
+  hvac_dehumidifier: "humidifier.REPLACE_ME_dehumidifier"
+  total_amps: "sensor.REPLACE_ME_total_amps"
+
+  # Weather
+  weather_entity: "weather.REPLACE_ME"
+  barometric_pressure_trend: "sensor.barometric_pressure_trend"
+  noaa_tides: "sensor.noaa_tides"
+
+  # Outdoor Temperature
+  outdoor_temperature: "sensor.climate_outdoor_temperature"
+
+  # Media Player
+  media_player_entity: "media_player.REPLACE_ME"
+  sonos_volume_down: "script.sonos_volume_down"
+  sonos_volume_up: "script.sonos_volume_up"
+  # Sonos Sources (source name must match exactly what Sonos reports)
+  sonos_source_01: "REPLACE_ME_source_01"
+  sonos_source_02: "REPLACE_ME_source_02"
+  sonos_source_03: "REPLACE_ME_source_03"
+  sonos_name_01: "Source 1"
+  sonos_name_02: "Source 2"
+  sonos_name_03: "Source 3"
+
+  # Automations
+  automation_script_01: "script.REPLACE_ME_01"
+  automation_switch_02: "switch.REPLACE_ME_02"
+  automation_script_03: "scene.REPLACE_ME_03"
+  automation_script_04: "script.REPLACE_ME_04"
+  automation_name_01: "Automation 1"
+  automation_name_02: "Automation 2"
+  automation_name_03: "Automation 3"
+  automation_name_04: "Automation 4"
+
+  # Quick Access Footer Buttons
+  quick_btn_01_entity: "cover.REPLACE_ME"
+  quick_btn_01_type: "cover"
+  quick_btn_01_icon: "\U000F1A6C"
+  quick_btn_02_entity: "light.REPLACE_ME"
+  quick_btn_02_type: "light"
+  quick_btn_02_icon: "\U000F0336"
+  quick_btn_03_entity: "media_player.REPLACE_ME"
+  quick_btn_03_type: "media"
+  quick_btn_03_icon: "\U000F075A"
+
+#===============================================================
+esphome:
+  platformio_options:
+    build_flags: "-DBOARD_HAS_PSRAM"
+    board_build.arduino.memory_type: qio_opi
+    board_build.flash_mode: dio
+    board_upload.maximum_ram_size: 524288
+  on_boot:
+    priority: -100
+    then:
+      - delay: 1000ms
+      - light.turn_on:
+          id: display_backlight
+          brightness: !lambda "return id(display_brightness_level).state / 100.0f;"
+      - lambda: |-
+          id(display_dimmed) = false;
+          id(sleep_mode_active) = false;
+          ESP_LOGI("startup", "Display backlight enabled on boot");
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+      CONFIG_SPIRAM_RODATA: "y"
+  flash_size: 8MB
+logger:
+  level: WARN
+safe_mode:
+  boot_is_good_after: 120s
+  num_attempts: 3
+#bluetooth_proxy:
+#  active: false
+psram:
+  mode: octal
+  speed: 80MHz
+i2c:
+  sda: GPIO08
+  scl: GPIO09
+  id: bus_a
+ch422g:
+  - id: ch422g_hub
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time:
+      - seconds: /5
+        then:
+          - lambda: |-
+              auto t = id(ha_time).now();
+              char time_buf[8];
+              snprintf(time_buf, sizeof(time_buf), "%02d:%02d", t.hour, t.minute);
+              lv_label_set_text(id(lbl_time), time_buf);
+              lv_label_set_text(id(lbl_media_page_time), time_buf);
+              lv_label_set_text(id(lbl_thermostat_page_time), time_buf);
+              lv_label_set_text(id(lbl_automations_page_time), time_buf);
+              lv_label_set_text(id(lbl_blinds_page_time), time_buf);
+              lv_label_set_text(id(lbl_lights_page_time), time_buf);
+              const char* days[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+              char date_buf[32];
+              sprintf(date_buf, "%s, %02d/%02d", days[t.day_of_week - 1], t.month, t.day_of_month);
+              lv_label_set_text(id(lbl_date), date_buf);
+              lv_label_set_text(id(lbl_sleep_time), time_buf);
+globals:
+  - id: display_dimmed
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: sleep_mode_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+number:
+  - platform: template
+    name: "Timeout Dimming"
+    id: timeout_dimming
+    optimistic: true
+    min_value: 0
+    max_value: 60
+    step: 1
+    initial_value: 2
+    restore_value: yes
+    unit_of_measurement: "min"
+    mode: box
+  - platform: template
+    name: "Timeout Sleep"
+    id: timeout_sleep
+    optimistic: true
+    min_value: 0
+    max_value: 60
+    step: 1
+    initial_value: 5
+    restore_value: yes
+    unit_of_measurement: "min"
+    mode: box
+  - platform: template
+    name: "Display Brightness"
+    id: display_brightness_level
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 10
+    initial_value: 100
+    restore_value: yes
+    unit_of_measurement: "%"
+    mode: slider
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(display_dimmed);'
+            then:
+              - light.turn_on:
+                  id: display_backlight
+                  brightness: !lambda "return x / 100.0f;"
+  - platform: template
+    name: "Display Dimming"
+    id: display_dimming_level
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 10
+    initial_value: 5
+    restore_value: yes
+    unit_of_measurement: "%"
+    mode: slider
+switch:
+  - platform: template
+    name: "Display Sleep Mode"
+    id: display_sleep_mode
+    optimistic: true
+    internal: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:sleep"
+    turn_on_action:
+      - lambda: |-
+          ESP_LOGI("sleep", "Entering sleep mode - showing clock overlay");
+          id(sleep_mode_active) = true;
+          lv_obj_clear_flag(id(sleep_clock_overlay), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(footer_bar), LV_OBJ_FLAG_HIDDEN);
+    turn_off_action:
+      - lambda: |-
+          ESP_LOGI("sleep", "Exiting sleep mode - hiding clock overlay");
+          id(sleep_mode_active) = false;
+          id(display_dimmed) = false;
+          lv_obj_add_flag(id(sleep_clock_overlay), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_clear_flag(id(footer_bar), LV_OBJ_FLAG_HIDDEN);
+      - light.turn_on:
+          id: display_backlight
+          brightness: !lambda "return id(display_brightness_level).state / 100.0f;"
+button:
+  - platform: template
+    name: "Show Notification"
+    id: show_notification_btn
+    on_press:
+      - lambda: |-
+          lv_obj_clear_flag(id(alert_overlay), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_set_style_opa(id(footer_bar), LV_OPA_50, 0);
+      - light.turn_on: display_backlight
+      - lvgl.resume:
+display:
+  - platform: mipi_rgb
+    model: ESP32-S3-TOUCH-LCD-4.3
+    id: my_display
+    auto_clear_enabled: false
+    reset_pin:
+      ch422g: ch422g_hub
+      number: 3
+    enable_pin:
+      ch422g: ch422g_hub
+      number: 2
+touchscreen:
+  platform: gt911
+  id: my_touch
+  interrupt_pin: GPIO4
+  reset_pin:
+    ch422g: ch422g_hub
+    number: 1
+    mode: OUTPUT
+  on_release:
+    - lambda: |-
+        // Wake from sleep mode (clock page)
+        if (id(sleep_mode_active)) {
+          ESP_LOGI("touch", "Touch detected - waking from sleep mode");
+          id(display_sleep_mode).turn_off();
+          return;
+        }
+        // Wake from dim
+        if (id(display_dimmed)) {
+          ESP_LOGI("touch", "Touch detected - restoring brightness");
+          id(display_dimmed) = false;
+          auto call = id(display_backlight).turn_on();
+          call.set_brightness(id(display_brightness_level).state / 100.0f);
+          call.perform();
+        }
+output:
+  - platform: ledc
+    pin: GPIO44
+    id: backlight_pwm
+    frequency: 25000Hz
+    min_power: 0.0
+    zero_means_zero: true
+    inverted: true
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    id: display_backlight
+    restore_mode: ALWAYS_ON
+    default_transition_length: 0.5s
+    gamma_correct: 1.0
+    internal: true
+font:
+  - file: "gfonts://Roboto"
+    id: roboto18
+    size: 18
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: roboto24
+    size: 24
+    bpp: 4
+    extras:
+      - file: "gfonts://Roboto"
+        glyphs: "àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞß"
+  - file: "gfonts://Roboto"
+    id: roboto36
+    size: 36
+    bpp: 4
+    extras:
+      - file: "gfonts://Roboto"
+        glyphs: "àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞß"
+  - file: "gfonts://Roboto"
+    id: roboto48
+    size: 48
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: roboto64
+    size: 64
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: roboto128
+    size: 128
+    bpp: 4
+  - file: "custom/MaterialDesignIconsDesktop.ttf"
+    id: mdi_24
+    size: 24
+    bpp: 4
+    glyphs: [
+      "\U000F0335", # bulb on
+      "\U000F0336", # bulb off
+      "\U000F0238", # fire/flame
+      "\U000F0717", # snowflake
+      "\U000F0425", # power
+      "\U000F028F", # refrigerator
+      "\U000F09A0", # shower
+      "\U000F02E3", # bed
+      "\U000F156D", # sofa
+      "\U000F04A3", # silverware
+      "\U000F095F", # office lamp
+      "\U000F1A6C", # blinds closed
+      "\U000F1011", # blinds open
+      "\U000F075A", # music note
+      "\U000F0141", # chevron-left (previous)
+      "\U000F0142", # chevron-right (next)
+      "\U000F06A1", # home-outline
+      "\U000F00AF", # bluetooth
+      "\U000F05A9", # wifi 4 bar
+      "\U000F08BE", # cellphone-wireless
+      "\U000F07D0", # home-assistant
+    ]
+  - file: "custom/MaterialDesignIconsDesktop.ttf"
+    id: mdi_42
+    size: 42
+    bpp: 4
+    glyphs: [
+      "\U000F0335", # bulb on
+      "\U000F0336", # bulb off
+      "\U000F1A6C", # blinds closed
+      "\U000F1011", # blinds open
+      "\U000F05A9", # wifi
+      "\U000F040E", # play/pause
+      "\U000F075D", # vol +
+      "\U000F075E", # vol -
+      "\U000F1473", # fan-speed-2
+      "\U000F1797", # ceiling-fan
+      "\U000F070D", # robot-vacuum
+      "\U000F0469", # router-wireless
+      "\U000F1056", # party-popper
+      "\U000F0D38", # multiple-speaker
+      "\U000F0238", # fire/flame
+      "\U000F0717", # snowflake
+      "\U000F0425", # power
+      "\U000F075A", # music note
+      "\U000F0159", # close-circle
+    ]
+  - file: "custom/MaterialDesignIconsDesktop.ttf"
+    id: mdi_72
+    size: 72
+    bpp: 4
+    glyphs: [
+      "\U000F0599", # weather sunny
+      "\U000F0590", # cloudy
+      "\U000F0597", # rainy
+      "\U000F0596", # pouring
+      "\U000F0598", # snowy
+      "\U000F0595", # partly cloudy
+      "\U000F059D", # windy
+      "\U000F0591", # fog
+      "\U000F0594", # night
+    ]
+http_request:
+  timeout: 10s
+image:
+  - id: boot_logo
+    file: "custom/logo.bmp"
+    type: RGB565
+    resize: 200x200
+  - id: media_blank_art
+    file: "custom/blank_album.bmp"
+    type: RGB565
+    resize: 200x200
+online_image:
+  - id: media_online_art
+    type: RGB565
+    format: BMP
+    url: "${ha_base_url}/local/media_album.bmp"
+    update_interval: never
+    on_download_finished:
+      # lvgl.image.update is the correct ESPHome-native way to swap an image
+      # source on an LVGL widget. It avoids all lv_obj_t incomplete-type issues
+      # that arise when trying to call lv_image_set_src directly from a lambda.
+      - lvgl.image.update:
+          id: media_album_widget
+          src: media_online_art
+    on_error:
+      - lambda: |-
+          ESP_LOGW("media", "Album art download failed");
+text:
+  - platform: template
+    name: "Notification Label"
+    id: notification_label_input
+    optimistic: true
+    mode: text
+    on_value:
+      then:
+        - lambda: |-
+            lv_label_set_text(id(alert_title), x.c_str());
+  - platform: template
+    name: "Notification Message"
+    id: notification_message_input
+    optimistic: true
+    mode: text
+    on_value:
+      then:
+        - lambda: |-
+            lv_label_set_text(id(alert_message), x.c_str());
+## ---- Binary Sensors for HA light GROUP states ----
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    id: encoder_switch
+    name: "Encoder Switch"
+    internal: true
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_press:
+      - homeassistant.service:
+          service: media_player.media_play_pause
+          data:
+            entity_id: ${media_player_entity}
+
+
+  - platform: homeassistant
+    id: light_status_01
+    entity_id: ${light_group_01}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(light_status_01).state) {
+              lv_obj_add_state(id(btn_light_01), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_01), "\U000F0335");
+              lv_obj_set_style_text_color(id(lbl_light_icon_01), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_light_01), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_01), "\U000F0336");
+              lv_obj_set_style_text_color(id(lbl_light_icon_01), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: light_status_02
+    entity_id: ${light_group_02}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(light_status_02).state) {
+              lv_obj_add_state(id(btn_light_02), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_02), "\U000F0335");
+              lv_obj_set_style_text_color(id(lbl_light_icon_02), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_light_02), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_02), "\U000F0336");
+              lv_obj_set_style_text_color(id(lbl_light_icon_02), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: light_status_03
+    entity_id: ${light_group_03}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(light_status_03).state) {
+              lv_obj_add_state(id(btn_light_03), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_03), "\U000F0335");
+              lv_obj_set_style_text_color(id(lbl_light_icon_03), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_light_03), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_03), "\U000F0336");
+              lv_obj_set_style_text_color(id(lbl_light_icon_03), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: light_status_04
+    entity_id: ${light_group_04}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(light_status_04).state) {
+              lv_obj_add_state(id(btn_light_04), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_04), "\U000F0335");
+              lv_obj_set_style_text_color(id(lbl_light_icon_04), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_light_04), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_04), "\U000F0336");
+              lv_obj_set_style_text_color(id(lbl_light_icon_04), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: light_status_05
+    entity_id: ${light_group_05}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(light_status_05).state) {
+              lv_obj_add_state(id(btn_light_05), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_05), "\U000F0335");
+              lv_obj_set_style_text_color(id(lbl_light_icon_05), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_light_05), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_05), "\U000F0336");
+              lv_obj_set_style_text_color(id(lbl_light_icon_05), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: light_status_06
+    entity_id: ${light_group_06}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(light_status_06).state) {
+              lv_obj_add_state(id(btn_light_06), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_06), "\U000F0335");
+              lv_obj_set_style_text_color(id(lbl_light_icon_06), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_light_06), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_light_icon_06), "\U000F0336");
+              lv_obj_set_style_text_color(id(lbl_light_icon_06), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: climate_fan_status
+    entity_id: ${hvac_fan_switch}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(climate_fan_status).state) {
+              lv_obj_add_state(id(btn_hvac_fan), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_hvac_fan_icon), lv_color_hex(0xFFFFFF), 0);
+            } else {
+              lv_obj_clear_state(id(btn_hvac_fan), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_hvac_fan_icon), lv_color_hex(0x666666), 0);
+            }
+  - platform: homeassistant
+    id: duke_switch_status
+    entity_id: ${automation_switch_02}
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            if (id(duke_switch_status).state) {
+              lv_obj_add_state(id(btn_auto_02), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_auto_icon_02), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_auto_02), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_auto_icon_02), lv_color_hex(0xFFFFFF), 0);
+            }
+  # Quick button status for light (binary sensor)
+  - platform: homeassistant
+    id: quick_btn_02_status
+    entity_id: ${quick_btn_02_entity}
+    internal: true
+# ---- Text Sensors ----
+text_sensor:
+  - platform: homeassistant
+    id: cover_status_01
+    entity_id: ${cover_entity_01}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string state = id(cover_status_01).state;
+            if (state == "open") {
+              lv_obj_add_state(id(btn_cover_01), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_cover_icon_01), "\U000F1011");
+              lv_obj_set_style_text_color(id(lbl_cover_icon_01), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_cover_01), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_cover_icon_01), "\U000F1A6C");
+              lv_obj_set_style_text_color(id(lbl_cover_icon_01), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: cover_status_02
+    entity_id: ${cover_entity_02}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string state = id(cover_status_02).state;
+            if (state == "open") {
+              lv_obj_add_state(id(btn_cover_02), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_cover_icon_02), "\U000F1011");
+              lv_obj_set_style_text_color(id(lbl_cover_icon_02), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_cover_02), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_cover_icon_02), "\U000F1A6C");
+              lv_obj_set_style_text_color(id(lbl_cover_icon_02), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: cover_status_03
+    entity_id: ${cover_entity_03}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string state = id(cover_status_03).state;
+            if (state == "open") {
+              lv_obj_add_state(id(btn_cover_03), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_cover_icon_03), "\U000F1011");
+              lv_obj_set_style_text_color(id(lbl_cover_icon_03), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_cover_03), LV_STATE_CHECKED);
+              lv_label_set_text(id(lbl_cover_icon_03), "\U000F1A6C");
+              lv_obj_set_style_text_color(id(lbl_cover_icon_03), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: fan_status_01
+    entity_id: ${fan_entity_01}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string state = id(fan_status_01).state;
+            if (state == "on") {
+              lv_obj_add_state(id(btn_fan_01), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_fan_icon_01), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_fan_01), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_fan_icon_01), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: fan_status_02
+    entity_id: ${fan_entity_02}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string state = id(fan_status_02).state;
+            if (state == "on") {
+              lv_obj_add_state(id(btn_fan_02), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_fan_icon_02), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_fan_02), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_fan_icon_02), lv_color_hex(0xFFFFFF), 0);
+            }
+  - platform: homeassistant
+    id: fan_status_03
+    entity_id: ${fan_entity_03}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string state = id(fan_status_03).state;
+            if (state == "on") {
+              lv_obj_add_state(id(btn_fan_03), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_fan_icon_03), lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(id(btn_fan_03), LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(id(lbl_fan_icon_03), lv_color_hex(0xFFFFFF), 0);
+            }
+  # Quick button status for cover (text sensor for state)
+  - platform: homeassistant
+    id: quick_btn_01_status
+    entity_id: ${quick_btn_01_entity}
+    internal: true
+  - platform: homeassistant
+    id: climate_hvac_action
+    entity_id: ${climate_entity_01}
+    attribute: hvac_action
+    internal: true
+  - platform: homeassistant
+    id: climate_entity_state
+    entity_id: ${climate_entity_01}
+    internal: true
+  - platform: homeassistant
+    id: weather_condition
+    entity_id: ${weather_entity}
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string cond = id(weather_condition).state;
+            const char *icon = "\U000F0594";
+            if (cond == "sunny" || cond == "clear" || cond == "clearsky") icon = "\U000F0599";
+            else if (cond == "partlycloudy" || cond == "partly_cloudy") icon = "\U000F0595";
+            else if (cond == "cloudy") icon = "\U000F0590";
+            else if (cond == "rainy" || cond == "light-rain" || cond == "rain") icon = "\U000F0597";
+            else if (cond == "pouring" || cond == "heavy-rain") icon = "\U000F0596";
+            else if (cond == "snowy" || cond == "snow") icon = "\U000F0598";
+            else if (cond == "fog" || cond == "mist") icon = "\U000F0591";
+            else if (cond == "clear-night" || cond == "night") icon = "\U000F0594";
+            lv_label_set_text(id(lbl_weather_icon), icon);
+  - platform: homeassistant
+    id: barometric_pressure_trend
+    entity_id: ${barometric_pressure_trend}
+    internal: true
+  - platform: homeassistant
+    id: noaa_tides
+    entity_id: ${noaa_tides}
+    internal: true
+  - platform: homeassistant
+    id: mp_title
+    entity_id: ${media_player_entity}
+    attribute: media_title
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (id(mp_title).state.empty()) {
+              lv_label_set_text(id(lbl_media_title), "--");
+            } else {
+              lv_label_set_text(id(lbl_media_title), id(mp_title).state.c_str());
+            }
+  - platform: homeassistant
+    id: mp_artist
+    entity_id: ${media_player_entity}
+    attribute: media_artist
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (id(mp_artist).state.empty()) {
+              lv_label_set_text(id(lbl_media_artist), "--");
+            } else {
+              lv_label_set_text(id(lbl_media_artist), id(mp_artist).state.c_str());
+            }
+  - platform: homeassistant
+    id: mp_album
+    entity_id: ${media_player_entity}
+    attribute: media_album_name
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (id(mp_album).state.empty()) {
+              lv_label_set_text(id(lbl_media_album), "--");
+            } else {
+              lv_label_set_text(id(lbl_media_album), id(mp_album).state.c_str());
+            }
+  - platform: homeassistant
+    id: mp_entity_picture
+    entity_id: ${media_player_entity}
+    attribute: entity_picture
+    internal: true
+    on_value:
+      then:
+        - delay: 2s
+        - component.update: media_online_art
+  # ESPHome-facing URL for the converted album art image, published by the
+  # convert_media_album_art integration. Whenever the URL this entity
+  # reports changes (new host, new port, moved behind a proxy), push it
+  # into online_image and re-download - no reflash required.
+  - platform: homeassistant
+    id: ha_esphome_image_url
+    entity_id: ${esphome_image_url_entity}
+    internal: true
+    on_value:
+      then:
+        - online_image.set_url:
+            id: media_online_art
+            url: !lambda 'return x;'
+  - platform: homeassistant
+    id: util_dehumidifier_action
+    entity_id: ${hvac_dehumidifier}
+    attribute: action
+    internal: true
+  - platform: homeassistant
+    id: ble_device_area
+    entity_id: ${ble_presence_device}
+    attribute: area
+    internal: true
+  - platform: homeassistant
+    id: router_isp_status
+    entity_id: ${router_isp}
+    internal: true
+sensor:
+  - platform: rotary_encoder
+    id: volume_encoder
+    name: "Volume Encoder"
+    pin_a:
+      number: GPIO11
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: GPIO12
+      mode:
+        input: true
+        pullup: true
+    resolution: 1
+    min_value: -32768
+    max_value: 32767
+    publish_initial_value: false
+    internal: true
+    on_clockwise:
+      - homeassistant.service:
+          service: script.turn_on
+          data:
+            entity_id: ${sonos_volume_up}
+    on_anticlockwise:
+      - homeassistant.service:
+          service: script.turn_on
+          data:
+            entity_id: ${sonos_volume_down}
+
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+  - platform: wifi_signal
+    name: "WiFi Signal Percent"
+    id: wifi_signal_percent
+    update_interval: 60s
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+  - platform: homeassistant
+    id: outdoor_temp
+    entity_id: ${outdoor_temperature}
+    internal: true
+  - platform: homeassistant
+    id: weather_temp
+    entity_id: weather.beacon
+    attribute: temperature
+    internal: true
+  - platform: homeassistant
+    id: weather_humidity
+    entity_id: weather.beacon
+    attribute: humidity
+    internal: true
+  - platform: homeassistant
+    id: weather_pressure
+    entity_id: weather.beacon
+    attribute: pressure
+    internal: true
+  - platform: homeassistant
+    id: weather_wind_speed
+    entity_id: weather.beacon
+    attribute: wind_speed
+    internal: true
+  - platform: homeassistant
+    id: weather_wind_bearing
+    entity_id: weather.beacon
+    attribute: wind_bearing
+    internal: true
+  - platform: homeassistant
+    id: weather_precipitation
+    entity_id: weather.beacon
+    attribute: precipitation
+    internal: true
+  - platform: homeassistant
+    id: climate_current_temp
+    entity_id: ${climate_entity_01}
+    attribute: current_temperature
+    internal: true
+  - platform: homeassistant
+    id: climate_target_temp
+    entity_id: ${climate_entity_01}
+    attribute: temperature
+    internal: true
+  - platform: homeassistant
+    id: mp_volume
+    entity_id: ${media_player_entity}
+    attribute: volume_level
+    internal: true
+  - platform: homeassistant
+    id: util_amps
+    entity_id: ${hvac_current}
+    internal: true
+  - platform: homeassistant
+    id: util_chiller
+    entity_id: ${hvac_chiller}
+    internal: true
+  - platform: homeassistant
+    id: header_current_amps_sensor
+    entity_id: ${total_amps}
+    internal: true
+# ---- LVGL Config ----
+lvgl:
+  color_depth: 16
+  displays:
+    - my_display
+  touchscreens:
+    - my_touch
+  buffer_size: 12%
+  page_wrap: true
+  # ---------------------------------------------------------------
+  # IDLE / DIM / SLEEP  (replaces lv_disp_get_inactive_time lambda)
+  # on_idle fires once when inactivity crosses each threshold.
+  # on_resume fires when touch wakes LVGL — used to clear dim state.
+  # ---------------------------------------------------------------
+  on_idle:
+    # First threshold: dim the backlight
+    - timeout: !lambda "return (uint32_t)(id(timeout_dimming).state * 60000);"
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(sleep_mode_active) && id(timeout_dimming).state > 0;'
+            then:
+              - lambda: |-
+                  ESP_LOGI("idle", "Dim timeout reached");
+                  id(display_dimmed) = true;
+              - light.turn_on:
+                  id: display_backlight
+                  brightness: !lambda "return id(display_dimming_level).state / 100.0f;"
+    # Second threshold: show clock/sleep overlay
+    # Total idle time = dim_timeout + sleep_timeout
+    - timeout: !lambda |-
+        uint32_t dim_ms  = (uint32_t)(id(timeout_dimming).state * 60000);
+        uint32_t slp_ms  = (uint32_t)(id(timeout_sleep).state  * 60000);
+        // If dimming is disabled, sleep fires on its own timeout alone
+        return (dim_ms > 0 ? dim_ms : 0) + slp_ms;
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(sleep_mode_active) && id(timeout_sleep).state > 0;'
+            then:
+              - switch.turn_on: display_sleep_mode
+  on_resume:
+    then:
+      - if:
+          condition:
+            lambda: 'return id(sleep_mode_active);'
+          then:
+            - switch.turn_off: display_sleep_mode
+      - if:
+          condition:
+            lambda: 'return id(display_dimmed) && !id(sleep_mode_active);'
+          then:
+            - lambda: 'id(display_dimmed) = false;'
+            - light.turn_on:
+                id: display_backlight
+                brightness: !lambda "return id(display_brightness_level).state / 100.0f;"
+  theme:
+    obj:
+      border_width: 0
+      border_opa: 0
+      bg_color: 0x000000
+    button:
+      bg_color: 0x333333
+      bg_grad_dir: VER
+      text_color: 0xFFFFFF
+      styles:
+        - mdi_icon_off
+      checked:
+        bg_color: 0x333333
+        text_color: 0xFFFFFF
+        styles:
+          - mdi_icon_on
+  style_definitions:
+    - id: header_style
+      bg_color: 0x333333
+      text_color: 0xFFFFFF
+      border_width: 0
+      bg_grad_dir: VER
+      bg_opa: COVER
+      border_opa: TRANSP
+      radius: 0
+      pad_all: 10
+      width: 100%
+      height: 48
+    - id: footer_style
+      bg_color: 0x333333
+      text_color: 0xFFFFFF
+      border_width: 0
+      bg_grad_dir: VER
+      pad_all: 6
+    - id: page_style
+      bg_color: 0x000000
+      border_width: 0
+      border_opa: 0
+      pad_all: 0
+    - id: mdi_icon_off
+      text_color: 0xFFFFFF
+    - id: mdi_icon_on
+      text_color: 0xCC9900
+  pages:
+    # Main Page
+    - id: main_page
+      layout:
+        type: flex
+        flex_flow: column
+        flex_align_main: start
+        flex_align_cross: center
+      bg_color: 0x000000
+      on_gesture:
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_LEFT;
+              then:
+                - lvgl.page.next:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_RIGHT;
+              then:
+                - lvgl.page.previous:
+      widgets:
+        # Header
+        - obj:
+            width: 100%
+            height: 48
+            align: top_mid
+            styles: header_style
+            layout:
+              type: flex
+              flex_flow: row
+              flex_align_main: start
+              flex_align_cross: center
+            widgets:
+              - label:
+                  id: lbl_hastatus
+                  text: "\U000F07D0"
+                  text_font: mdi_24
+                  hidden: true
+                  text_color: 0xCCCCCC
+                  x: 12
+                  y: 0
+              - label:
+                  id: lbl_header_cellular
+                  text: "\U000F08BE"
+                  text_font: mdi_24
+                  hidden: true
+                  text_color: 0xCCCCCC
+                  x: 42
+                  y: 0
+              - label:
+                  id: lbl_header_bluetooth
+                  text: "\U000F00AF"
+                  text_font: mdi_24
+                  hidden: true
+                  text_color: 0xCCCCCC
+                  x: 72
+                  y: 0
+              - label:
+                  id: lbl_header_current_amps
+                  text: "-- A"
+                  text_font: roboto18
+                  text_color: 0xCCCCCC
+                  align: top_right
+                  x: -10
+                  y: 12
+        # Main content row
+        - obj:
+            width: 100%
+            flex_grow: 1
+            layout:
+              type: flex
+              flex_flow: row
+              flex_align_main: space_between
+              flex_align_cross: center
+              pad_column: 5
+              pad_row: 5
+            bg_color: 0x000000
+            widgets:
+              # Left column (time)
+              - obj:
+                  layout:
+                    type: flex
+                    flex_flow: column
+                    flex_align_main: center
+                    flex_align_cross: start
+                    pad_row: 5
+                  width: 45%
+                  flex_grow: 1
+                  height: 100%
+                  bg_color: 0x000000
+                  widgets:
+                    - label:
+                        id: lbl_time
+                        text_font: roboto64
+                        text: "--:--"
+                        text_align: left
+                        text_color: 0xCCCCCC
+                        on_release:
+                          - switch.toggle: display_sleep_mode
+                    - label:
+                        id: lbl_date
+                        text_font: roboto24
+                        text: "-------, --/--"
+                        text_align: left
+                        text_color: 0xCCCCCC
+              # Right column (weather)
+              - obj:
+                  layout:
+                    type: grid
+                    grid_rows: [FR(30), FR(12), FR(12), FR(12), FR(12), FR(12), FR(12)]
+                    grid_columns: [FR(10), FR(40), FR(40), FR(10)]
+                    pad_column: 0
+                  width: 45%
+                  flex_grow: 1
+                  height: 100%
+                  bg_color: 0x000000
+                  widgets:
+                    - label:
+                        text: "\U000F14E4"
+                        id: lbl_weather_icon
+                        text_font: mdi_72
+                        text_color: 0xCC9900
+                        text_align: CENTER
+                        grid_cell_row_pos: 0
+                        grid_cell_column_pos: 1
+                        grid_cell_column_span: 2
+                        grid_cell_x_align: CENTER
+                        grid_cell_y_align: START
+                    - label:
+                        text: "--.- °F"
+                        id: lbl_weather_temp
+                        text_font: roboto24
+                        text_color: 0xCCCCCC
+                        text_align: RIGHT
+                        grid_cell_row_pos: 1
+                        grid_cell_column_pos: 1
+                        grid_cell_column_span: 2
+                        grid_cell_x_align: STRETCH
+                    - label:
+                        text: "-- %"
+                        id: lbl_weather_humidity
+                        text_font: roboto24
+                        text_color: 0xCCCCCC
+                        text_align: RIGHT
+                        grid_cell_row_pos: 2
+                        grid_cell_column_pos: 1
+                        grid_cell_column_span: 2
+                        grid_cell_x_align: STRETCH
+                    - label:
+                        text: "--"
+                        id: lbl_weather_pressure
+                        text_font: roboto24
+                        text_color: 0xCCCCCC
+                        text_align: RIGHT
+                        grid_cell_row_pos: 3
+                        grid_cell_column_pos: 1
+                        grid_cell_column_span: 2
+                        grid_cell_x_align: STRETCH
+                    - label:
+                        text: "--"
+                        id: lbl_weather_tide
+                        text_font: roboto24
+                        text_color: 0xCCCCCC
+                        text_align: RIGHT
+                        grid_cell_row_pos: 4
+                        grid_cell_column_pos: 1
+                        grid_cell_column_span: 2
+                        grid_cell_x_align: STRETCH
+                    - label:
+                        text: "-- mph"
+                        id: lbl_weather_wind
+                        text_font: roboto24
+                        text_color: 0xCCCCCC
+                        text_align: RIGHT
+                        grid_cell_row_pos: 5
+                        grid_cell_column_pos: 1
+                        grid_cell_column_span: 2
+                        grid_cell_x_align: STRETCH
+                    - label:
+                        text: ""
+                        id: lbl_weather_condition
+                        text_font: roboto24
+                        text_color: 0xCCCCCC
+                        text_align: RIGHT
+                        grid_cell_row_pos: 6
+                        grid_cell_column_pos: 1
+                        grid_cell_column_span: 2
+                        grid_cell_x_align: STRETCH
+                        hidden: true
+        - obj:
+            height: 54
+    # Media Player Page
+    - id: media_player_page
+      bg_color: 0x000000
+      on_gesture:
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_LEFT;
+              then:
+                - lvgl.page.next:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_RIGHT;
+              then:
+                - lvgl.page.previous:
+      widgets:
+        # Header
+        - obj:
+            width: 100%
+            height: 48
+            styles: header_style
+            widgets:
+              - label:
+                  text: 'Media'
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  text_align: left
+                  x: 10
+                  y: 0
+              - label:
+                  id: lbl_media_page_time
+                  text: "--:--"
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  align: top_right
+                  text_align: right
+                  x: -10
+                  y: 0
+        # Album artwork
+        - image:
+            id: media_album_widget
+            src: media_online_art
+            x: 50
+            y: 80
+            width: 200
+            height: 200
+        # Volume Down Button
+        - button:
+            id: btn_volume_down
+            x: 50
+            y: 332
+            width: 60
+            height: 60
+            bg_color: 0x444444
+            on_short_click:
+              - homeassistant.service:
+                  service: script.turn_on
+                  data:
+                    entity_id: ${sonos_volume_down}
+            widgets:
+              - label:
+                  text: "\U000F075E"
+                  text_font: mdi_42
+                  text_color: 0x888888
+                  align: center
+        # Play/Pause Button
+        - button:
+            id: btn_play_pause
+            x: 120
+            y: 332
+            width: 60
+            height: 60
+            bg_color: 0x444444
+            on_short_click:
+              - homeassistant.service:
+                  service: media_player.media_play_pause
+                  data:
+                    entity_id: ${media_player_entity}
+            widgets:
+              - label:
+                  id: lbl_play_icon
+                  text: "\U000F040E"
+                  text_font: mdi_42
+                  text_color: 0x888888
+                  align: center
+        # Volume Up Button
+        - button:
+            id: btn_volume_up
+            x: 190
+            y: 332
+            width: 60
+            height: 60
+            bg_color: 0x444444
+            on_short_click:
+              - homeassistant.service:
+                  service: script.turn_on
+                  data:
+                    entity_id: ${sonos_volume_up}
+            widgets:
+              - label:
+                  text: "\U000F075D"
+                  text_font: mdi_42
+                  text_color: 0x888888
+                  align: center
+        # Media Title
+        - label:
+            id: lbl_media_title
+            text: "--"
+            x: 280
+            y: 90
+            width: 480
+            text_font: roboto36
+            text_color: 0xCC9900
+            text_align: RIGHT
+        # Media Album
+        - label:
+            id: lbl_media_album
+            text: ""
+            x: 280
+            y: 175
+            width: 480
+            text_font: roboto24
+            text_color: 0xCC9900
+            text_align: RIGHT
+        # Media Artist
+        - label:
+            id: lbl_media_artist
+            text: "--"
+            x: 280
+            y: 215
+            width: 480
+            text_font: roboto24
+            text_color: 0xCC9900
+            text_align: RIGHT
+        # Sonos Buttons
+        - button:
+            id: btn_sonos_01
+            x: 360
+            y: 332
+            width: 130
+            height: 60
+            bg_color: 0x333333
+            on_short_click:
+              - homeassistant.service:
+                  service: media_player.select_source
+                  data:
+                    entity_id: ${media_player_entity}
+                    source: "${sonos_source_01}"
+            widgets:
+              - label:
+                  text: ${sonos_name_01}
+                  text_color: 0xCCCCCC
+                  align: center
+        - button:
+            id: btn_sonos_02
+            x: 500
+            y: 332
+            width: 130
+            height: 60
+            bg_color: 0x333333
+            on_short_click:
+              - homeassistant.service:
+                  service: media_player.select_source
+                  data:
+                    entity_id: ${media_player_entity}
+                    source: "${sonos_source_02}"
+            widgets:
+              - label:
+                  text: ${sonos_name_02}
+                  text_color: 0xCCCCCC
+                  align: center
+        - button:
+            id: btn_sonos_03
+            x: 640
+            y: 332
+            width: 130
+            height: 60
+            bg_color: 0x333333
+            on_short_click:
+              - homeassistant.service:
+                  service: media_player.select_source
+                  data:
+                    entity_id: ${media_player_entity}
+                    source: "${sonos_source_03}"
+            widgets:
+              - label:
+                  text: ${sonos_name_03}
+                  text_color: 0xCCCCCC
+                  align: center
+    # Thermostat Page
+    - id: thermostat_page
+      bg_color: 0x000000
+      on_gesture:
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_LEFT;
+              then:
+                - lvgl.page.next:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_RIGHT;
+              then:
+                - lvgl.page.previous:
+      widgets:
+        # Header
+        - obj:
+            width: 100%
+            height: 48
+            styles: header_style
+            widgets:
+              - label:
+                  text: 'Thermostat'
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  text_align: left
+                  x: 10
+                  y: 0
+              - label:
+                  id: lbl_thermostat_page_time
+                  text: "--:--"
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  align: top_right
+                  text_align: right
+                  x: -10
+                  y: 0
+        # Mode buttons (left edge)
+        - button:
+            id: btn_hvac_mode_off
+            x: 10
+            y: 80
+            width: 50
+            height: 50
+            bg_color: 0x333333
+            on_short_click:
+              - homeassistant.service:
+                  service: climate.set_hvac_mode
+                  data:
+                    entity_id: ${climate_entity_01}
+                    hvac_mode: "off"
+            widgets:
+              - label:
+                  id: lbl_hvac_mode_off_icon
+                  text: "\U000F0425"
+                  text_font: mdi_42
+                  text_color: 0x666666
+                  align: center
+        - button:
+            id: btn_hvac_mode_cool
+            x: 10
+            y: 140
+            width: 50
+            height: 50
+            bg_color: 0x333333
+            on_short_click:
+              - homeassistant.service:
+                  service: climate.set_hvac_mode
+                  data:
+                    entity_id: ${climate_entity_01}
+                    hvac_mode: "cool"
+            widgets:
+              - label:
+                  id: lbl_hvac_mode_cool_icon
+                  text: "\U000F0717"
+                  text_font: mdi_42
+                  text_color: 0x666666
+                  align: center
+        - button:
+            id: btn_hvac_mode_heat
+            x: 10
+            y: 200
+            width: 50
+            height: 50
+            bg_color: 0x333333
+            on_short_click:
+              - homeassistant.service:
+                  service: climate.set_hvac_mode
+                  data:
+                    entity_id: ${climate_entity_01}
+                    hvac_mode: "heat"
+            widgets:
+              - label:
+                  id: lbl_hvac_mode_heat_icon
+                  text: "\U000F0238"
+                  text_font: mdi_42
+                  text_color: 0x666666
+                  align: center
+        ## Arc
+        - arc:
+            id: th_setpoint_arc
+            align: CENTER
+            y: 20
+            width: 380
+            height: 380
+            arc_width: 18
+            arc_color: 0x292929
+            indicator:
+              arc_color: 0x15499E
+              arc_width: 18
+            knob:
+              bg_color: 0xFFFFFF
+            value: 750
+            min_value: 650
+            max_value: 800
+            adjustable: true
+            on_release:
+              - lambda: |-
+                  int raw = lv_arc_get_value(id(th_setpoint_arc));
+                  int snapped = ((raw + 5) / 10) * 10;
+                  lv_arc_set_value(id(th_setpoint_arc), snapped);
+              - homeassistant.service:
+                  service: climate.set_temperature
+                  data:
+                    entity_id: ${climate_entity_01}
+                    temperature: !lambda |-
+                      int snapped = ((lv_arc_get_value(id(th_setpoint_arc)) + 5) / 10) * 10;
+                      return (float)snapped / 10.0;
+        # Labels inside the arc
+        - label:
+            id: th_action_label
+            text: "--"
+            text_font: roboto24
+            text_color: 0xCCCCCC
+            align: CENTER
+            y: -50
+        - label:
+            id: th_setpoint_label
+            text: "--.-°"
+            text_font: roboto48
+            text_color: 0xFFFFFF
+            align: CENTER
+            y: 0
+        - label:
+            id: th_temperature_label
+            text: "--.-°"
+            text_font: roboto24
+            text_color: 0x15499E
+            align: CENTER
+            y: 50
+        - label:
+            id: th_mode_label
+            text: "OFF"
+            text_font: roboto24
+            text_color: 0xFFFFFF
+            border_color: 0xFFFFFF
+            border_width: 1
+            pad_top: 2
+            pad_bottom: 2
+            pad_left: 10
+            pad_right: 10
+            align: CENTER
+            y: 150
+        # Utilities
+        - label:
+            id: lbl_util_amps
+            text: "Amps: --"
+            text_font: roboto24
+            text_color: 0x666666
+            text_align: RIGHT
+            align: BOTTOM_RIGHT
+            x: -10
+            y: -130
+        - label:
+            id: lbl_util_chiller
+            text: "Chiller: --"
+            text_font: roboto24
+            text_color: 0x666666
+            text_align: RIGHT
+            align: BOTTOM_RIGHT
+            x: -10
+            y: -95
+        - label:
+            id: lbl_util_dehumidifier
+            text: "Dehumid: --"
+            text_font: roboto24
+            text_color: 0x666666
+            text_align: RIGHT
+            align: BOTTOM_RIGHT
+            x: -10
+            y: -60
+        # HVAC Fan Button
+        - button:
+            checkable: true
+            id: btn_hvac_fan
+            align: BOTTOM_LEFT
+            x: 10
+            y: -80
+            width: 50
+            height: 50
+            widgets:
+              - label:
+                  id: lbl_hvac_fan_icon
+                  text: "\U000F1473"
+                  text_font: mdi_42
+                  text_color: 0x666666
+                  align: center
+            on_short_click:
+              - homeassistant.service:
+                  service: switch.toggle
+                  data:
+                    entity_id: ${hvac_fan_switch}
+    # Automations Page
+    - id: automations_page
+      layout:
+        type: flex
+        flex_flow: column
+      bg_color: 0x000000
+      scrollbar_mode: "off"
+      on_gesture:
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_LEFT;
+              then:
+                - lvgl.page.next:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_RIGHT;
+              then:
+                - lvgl.page.previous:
+      widgets:
+        # Header
+        - obj:
+            width: 100%
+            height: 48
+            styles: header_style
+            widgets:
+              - label:
+                  text: 'Automations'
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  text_align: left
+                  x: 10
+                  y: 0
+              - label:
+                  id: lbl_automations_page_time
+                  text: "--:--"
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  align: top_right
+                  text_align: right
+                  x: -10
+                  y: 0
+        # Button Grid
+        - obj:
+            flex_grow: 1
+            width: 100%
+            scrollbar_mode: "off"
+            layout:
+              type: flex
+              flex_flow: ROW_WRAP
+              flex_align_main: SPACE_EVENLY
+              flex_align_cross: CENTER
+              pad_row: 20
+              pad_column: 20
+            bg_color: 0x000000
+            widgets:
+              - button:
+                  checkable: true
+                  id: btn_auto_02
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${automation_name_02}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_auto_icon_02
+                        text: "\U000F0469"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: switch.toggle
+                        data:
+                          entity_id: ${automation_switch_02}
+              - button:
+                  id: btn_auto_01
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${automation_name_01}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_auto_icon_01
+                        text: "\U000F070D"
+                        text_font: mdi_42
+                        text_color: 0xFFFFFF
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: script.turn_on
+                        data:
+                          entity_id: ${automation_script_01}
+              - button:
+                  id: btn_auto_04
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${automation_name_04}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_auto_icon_04
+                        text: "\U000F0D38"
+                        text_font: mdi_42
+                        text_color: 0xFFFFFF
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: script.turn_on
+                        data:
+                          entity_id: ${automation_script_04}
+              - button:
+                  id: btn_auto_03
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${automation_name_03}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_auto_icon_03
+                        text: "\U000F1056"
+                        text_font: mdi_42
+                        text_color: 0xFFFFFF
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: scene.turn_on
+                        data:
+                          entity_id: ${automation_script_03}
+        - obj:
+            height: 54
+    # Blinds & Fans Page
+    - id: blinds_page
+      layout:
+        type: flex
+        flex_flow: column
+      bg_color: 0x000000
+      scrollbar_mode: "off"
+      on_gesture:
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_LEFT;
+              then:
+                - lvgl.page.next:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_RIGHT;
+              then:
+                - lvgl.page.previous:
+      widgets:
+        # Header
+        - obj:
+            width: 100%
+            height: 48
+            styles: header_style
+            widgets:
+              - label:
+                  text: 'Blinds & Fans'
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  text_align: left
+                  x: 10
+                  y: 0
+              - label:
+                  id: lbl_blinds_page_time
+                  text: "--:--"
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  align: top_right
+                  text_align: right
+                  x: -10
+                  y: 0
+        # Button Grid
+        - obj:
+            flex_grow: 1
+            width: 100%
+            scrollbar_mode: "off"
+            layout:
+              type: flex
+              flex_flow: ROW_WRAP
+              flex_align_main: SPACE_EVENLY
+              flex_align_cross: CENTER
+              pad_row: 20
+              pad_column: 20
+            bg_color: 0x000000
+            widgets:
+              - button:
+                  checkable: true
+                  id: btn_cover_01
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${cover_name_01}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_cover_icon_01
+                        text: "\U000F1A6C"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: cover.toggle
+                        data:
+                          entity_id: ${cover_entity_01}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: cover.stop_cover
+                        data:
+                          entity_id: ${cover_entity_01}
+              - button:
+                  checkable: true
+                  id: btn_cover_02
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${cover_name_02}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_cover_icon_02
+                        text: "\U000F1A6C"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: cover.toggle
+                        data:
+                          entity_id: ${cover_entity_02}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: cover.stop_cover
+                        data:
+                          entity_id: ${cover_entity_02}
+              - button:
+                  checkable: true
+                  id: btn_cover_03
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${cover_name_03}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_cover_icon_03
+                        text: "\U000F1A6C"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: cover.toggle
+                        data:
+                          entity_id: ${cover_entity_03}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: cover.stop_cover
+                        data:
+                          entity_id: ${cover_entity_03}
+              - button:
+                  checkable: true
+                  id: btn_fan_01
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${fan_name_01}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_fan_icon_01
+                        text: "\U000F1797"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: fan.toggle
+                        data:
+                          entity_id: ${fan_entity_01}
+              - button:
+                  checkable: true
+                  id: btn_fan_02
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${fan_name_02}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_fan_icon_02
+                        text: "\U000F1797"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: fan.toggle
+                        data:
+                          entity_id: ${fan_entity_02}
+              - button:
+                  checkable: true
+                  id: btn_fan_03
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${fan_name_03}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_fan_icon_03
+                        text: "\U000F1797"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: fan.toggle
+                        data:
+                          entity_id: ${fan_entity_03}
+        - obj:
+            height: 54
+    # Lights Page
+    - id: lights_page
+      layout:
+        type: flex
+        flex_flow: column
+      bg_color: 0x000000
+      scrollbar_mode: "off"
+      on_gesture:
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_LEFT;
+              then:
+                - lvgl.page.next:
+          - if:
+              condition:
+                lambda: |-
+                  lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+                  return dir == LV_DIR_RIGHT;
+              then:
+                - lvgl.page.previous:
+      widgets:
+        # Header
+        - obj:
+            width: 100%
+            height: 48
+            styles: header_style
+            widgets:
+              - label:
+                  text: 'Lights'
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  text_align: left
+                  x: 10
+                  y: 0
+              - label:
+                  id: lbl_lights_page_time
+                  text: "--:--"
+                  text_color: 0xCCCCCC
+                  text_font: roboto24
+                  align: top_right
+                  text_align: right
+                  x: -10
+                  y: 0
+        # Button Grid
+        - obj:
+            flex_grow: 1
+            width: 100%
+            scrollbar_mode: "off"
+            layout:
+              type: flex
+              flex_flow: ROW_WRAP
+              flex_align_main: SPACE_EVENLY
+              flex_align_cross: CENTER
+              pad_row: 20
+              pad_column: 20
+            bg_color: 0x000000
+            widgets:
+              - button:
+                  checkable: true
+                  id: btn_light_01
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${light_name_01}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_light_icon_01
+                        text: "\U000F0336"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_entity_01}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_group_01}
+              - button:
+                  checkable: true
+                  id: btn_light_02
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${light_name_02}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_light_icon_02
+                        text: "\U000F0336"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_entity_02}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_group_02}
+              - button:
+                  checkable: true
+                  id: btn_light_03
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${light_name_03}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_light_icon_03
+                        text: "\U000F0336"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_entity_03}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_group_03}
+              - button:
+                  checkable: true
+                  id: btn_light_04
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${light_name_04}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_light_icon_04
+                        text: "\U000F0336"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_entity_04}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_group_04}
+              - button:
+                  checkable: true
+                  id: btn_light_05
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${light_name_05}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_light_icon_05
+                        text: "\U000F0336"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_entity_05}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_group_05}
+              - button:
+                  checkable: true
+                  id: btn_light_06
+                  width: 220
+                  height: 150
+                  widgets:
+                    - label:
+                        text: ${light_name_06}
+                        text_color: 0xCCCCCC
+                        align: top_mid
+                    - label:
+                        id: lbl_light_icon_06
+                        text: "\U000F0336"
+                        text_font: mdi_42
+                        align: center
+                  on_short_click:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_entity_06}
+                  on_long_press:
+                    - homeassistant.service:
+                        service: light.toggle
+                        data:
+                          entity_id: ${light_group_06}
+        - obj:
+            height: 54
+  top_layer:
+    widgets:
+      # ===== GLOBAL HEADER ICONS =====
+      - label:
+          id: lbl_header_kitchen_light
+          text: "\U000F028F"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 300
+          y: 12
+          hidden: true
+      - label:
+          id: lbl_header_living_light
+          text: "\U000F156D"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 330
+          y: 12
+          hidden: true
+      - label:
+          id: lbl_header_dining_light
+          text: "\U000F04A3"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 360
+          y: 12
+          hidden: true
+      - label:
+          id: lbl_header_office_light
+          text: "\U000F095F"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 390
+          y: 12
+          hidden: true
+      - label:
+          id: lbl_header_bedroom_light
+          text: "\U000F02E3"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 420
+          y: 12
+          hidden: true
+      - label:
+          id: lbl_header_bathroom_light
+          text: "\U000F09A0"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 450
+          y: 12
+          hidden: true
+      - label:
+          id: lbl_header_hvac_cooling
+          text: "\U000F0717"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 480
+          y: 12
+          hidden: true
+      - label:
+          id: lbl_header_hvac_heating
+          text: "\U000F0238"
+          text_font: mdi_24
+          text_color: 0xDDDDDD
+          x: 480
+          y: 12
+          hidden: true
+      # Reboot button (invisible, top-left corner, only active on home page)
+      - button:
+          id: btn_reboot_toplayer
+          x: 0
+          y: 0
+          width: 80
+          height: 48
+          bg_opa: TRANSP
+          border_opa: TRANSP
+          shadow_opa: TRANSP
+          outline_opa: TRANSP
+          on_long_press:
+            - lambda: |-
+                lv_obj_t* active = lv_scr_act();
+                lv_obj_t* home = id(main_page)->obj;
+                if (active == home) {
+                  ESP_LOGI("reboot", "Reboot requested via home page header");
+                  delay(500);
+                  esp_restart();
+                } else {
+                  ESP_LOGD("reboot", "Reboot button only works on home page");
+                }
+      # Notification overlay
+      - obj:
+          id: alert_overlay
+          x: 0
+          y: 0
+          width: 100%
+          height: 100%
+          bg_color: 0x000000
+          bg_opa: 50%
+          hidden: true
+          clickable: true
+          widgets:
+            - obj:
+                id: alert_dialog
+                align: center
+                width: 650
+                height: 350
+                bg_color: 0xCC9900
+                bg_grad_color: 0x996600
+                bg_grad_dir: VER
+                border_color: 0xFFFFFF
+                border_width: 4
+                radius: 15
+                shadow_width: 30
+                shadow_color: 0x000000
+                shadow_opa: 50%
+                widgets:
+                  - label:
+                      id: alert_title
+                      text: "ALERT"
+                      text_font: roboto48
+                      text_color: 0x000000
+                      align: top_mid
+                      y: 30
+                  - label:
+                      id: alert_message
+                      text: "Alert message"
+                      text_font: roboto24
+                      text_color: 0x000000
+                      align: center
+                      text_align: center
+                      width: 90%
+                  - button:
+                      align: top_right
+                      x: -15
+                      y: 15
+                      width: 50
+                      height: 50
+                      bg_opa: TRANSP
+                      border_opa: TRANSP
+                      shadow_opa: TRANSP
+                      on_short_click:
+                        - lambda: |-
+                            lv_obj_add_flag(id(alert_overlay), LV_OBJ_FLAG_HIDDEN);
+                            lv_obj_set_style_opa(id(footer_bar), LV_OPA_100, 0);
+                      widgets:
+                        - label:
+                            text: "\U000F0159"
+                            text_font: mdi_42
+                            text_color: 0x000000
+                            align: center
+      # Sleep Clock Overlay (hidden by default)
+      - obj:
+          id: sleep_clock_overlay
+          x: 0
+          y: 0
+          width: 100%
+          height: 100%
+          bg_color: 0x000000
+          bg_opa: COVER
+          hidden: true
+          clickable: true
+          on_short_click:
+            - switch.turn_off: display_sleep_mode
+          widgets:
+            - label:
+                id: lbl_sleep_time
+                text: "--:--"
+                text_font: roboto128
+                text_color: 0x666666
+                align: CENTER
+      # Footer with Quick Access Buttons
+      - obj:
+          id: footer_bar
+          width: 100%
+          height: 54
+          align: bottom_mid
+          scrollbar_mode: "off"
+          styles: footer_style
+          layout:
+            type: flex
+            flex_flow: row
+            flex_align_main: space_between
+            flex_align_cross: center
+          widgets:
+            - button:
+                id: page_prev
+                bg_opa: TRANSP
+                border_opa: TRANSP
+                shadow_opa: TRANSP
+                outline_opa: TRANSP
+                on_press:
+                  then:
+                    - lvgl.page.previous:
+                widgets:
+                  - label:
+                      text: "\U000F0141"
+                      text_font: mdi_24
+            # Quick Button 1 - Office Blind
+            - button:
+                checkable: true
+                id: quick_btn_01
+                bg_opa: TRANSP
+                border_opa: TRANSP
+                shadow_opa: TRANSP
+                outline_opa: TRANSP
+                on_short_click:
+                  - homeassistant.service:
+                      service: cover.toggle
+                      data:
+                        entity_id: ${quick_btn_01_entity}
+                on_long_press:
+                  - homeassistant.service:
+                      service: cover.stop_cover
+                      data:
+                        entity_id: ${quick_btn_01_entity}
+                widgets:
+                  - label:
+                      id: lbl_quick_btn_01
+                      text: ${quick_btn_01_icon}
+                      text_font: mdi_24
+            # Quick Button 2 - Office Light
+            - button:
+                checkable: true
+                id: quick_btn_02
+                bg_opa: TRANSP
+                border_opa: TRANSP
+                shadow_opa: TRANSP
+                outline_opa: TRANSP
+                on_short_click:
+                  - homeassistant.service:
+                      service: light.toggle
+                      data:
+                        entity_id: ${quick_btn_02_entity}
+                on_long_press:
+                  - homeassistant.service:
+                      service: scene.turn_on
+                      data:
+                        entity_id: scene.all_lights_off
+                widgets:
+                  - label:
+                      id: lbl_quick_btn_02
+                      text: ${quick_btn_02_icon}
+                      text_font: mdi_24
+            # Quick Button 3 - Music Play/Pause
+            - button:
+                id: quick_btn_03
+                bg_opa: TRANSP
+                border_opa: TRANSP
+                shadow_opa: TRANSP
+                outline_opa: TRANSP
+                on_short_click:
+                  - homeassistant.service:
+                      service: media_player.media_play_pause
+                      data:
+                        entity_id: ${quick_btn_03_entity}
+                widgets:
+                  - label:
+                      id: lbl_quick_btn_03
+                      text: ${quick_btn_03_icon}
+                      text_font: mdi_24
+            - button:
+                id: page_home
+                bg_opa: TRANSP
+                border_opa: TRANSP
+                shadow_opa: TRANSP
+                outline_opa: TRANSP
+                on_press:
+                  then:
+                    - lvgl.page.show: main_page
+                widgets:
+                  - label:
+                      text: "\U000F06A1"
+                      text_font: mdi_24
+            - button:
+                id: page_next
+                bg_opa: TRANSP
+                border_opa: TRANSP
+                shadow_opa: TRANSP
+                outline_opa: TRANSP
+                on_press:
+                  then:
+                    - lvgl.page.next:
+                widgets:
+                  - label:
+                      text: "\U000F0142"
+                      text_font: mdi_24
+      # Boot Screen (MUST BE LAST)
+      - obj:
+          id: boot_screen
+          x: 0
+          y: 0
+          width: 100%
+          height: 100%
+          bg_color: 0xCC9900
+          bg_opa: COVER
+          radius: 0
+          pad_all: 0
+          border_width: 0
+          widgets:
+            - image:
+                align: CENTER
+                src: boot_logo
+          on_press:
+            - lvgl.widget.hide: boot_screen
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          // ---- Cellular Backup Indicator ----
+          if (!id(router_isp_status).state.empty() && id(router_isp_status).state == "Verizon") {
+            lv_obj_clear_flag(id(lbl_header_cellular), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(lbl_header_cellular), LV_OBJ_FLAG_HIDDEN);
+          }
+          // ---- Bluetooth presence indicator ----
+          if (!id(ble_device_area).state.empty() && id(ble_device_area).state == "${ble_presence_area}") {
+            lv_obj_clear_flag(id(lbl_header_bluetooth), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(lbl_header_bluetooth), LV_OBJ_FLAG_HIDDEN);
+          }
+          // ---- Header Current Amps ----
+          if (!isnan(id(header_current_amps_sensor).state)) {
+            char amps_buf[16];
+            snprintf(amps_buf, sizeof(amps_buf), "%.1f A", id(header_current_amps_sensor).state);
+            lv_label_set_text(id(lbl_header_current_amps), amps_buf);
+          } else {
+            lv_label_set_text(id(lbl_header_current_amps), "-- A");
+          }
+          // ---- Lights ----
+          auto update_light = [](auto status, auto btn, auto lbl) {
+            if (status->state) {
+              lv_obj_add_state(btn, LV_STATE_CHECKED);
+              lv_label_set_text(lbl, "\U000F0335");
+              lv_obj_set_style_text_color(lbl, lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(btn, LV_STATE_CHECKED);
+              lv_label_set_text(lbl, "\U000F0336");
+              lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFFFFF), 0);
+            }
+          };
+          update_light(id(light_status_01), id(btn_light_01), id(lbl_light_icon_01));
+          update_light(id(light_status_02), id(btn_light_02), id(lbl_light_icon_02));
+          update_light(id(light_status_03), id(btn_light_03), id(lbl_light_icon_03));
+          update_light(id(light_status_04), id(btn_light_04), id(lbl_light_icon_04));
+          update_light(id(light_status_05), id(btn_light_05), id(lbl_light_icon_05));
+          update_light(id(light_status_06), id(btn_light_06), id(lbl_light_icon_06));
+          // ---- Header Status Indicators (Global) ----
+          if (id(light_status_01).state) lv_obj_clear_flag(id(lbl_header_kitchen_light), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(lbl_header_kitchen_light), LV_OBJ_FLAG_HIDDEN);
+          if (id(light_status_02).state) lv_obj_clear_flag(id(lbl_header_living_light), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(lbl_header_living_light), LV_OBJ_FLAG_HIDDEN);
+          if (id(light_status_03).state) lv_obj_clear_flag(id(lbl_header_dining_light), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(lbl_header_dining_light), LV_OBJ_FLAG_HIDDEN);
+          if (id(light_status_04).state) lv_obj_clear_flag(id(lbl_header_office_light), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(lbl_header_office_light), LV_OBJ_FLAG_HIDDEN);
+          if (id(light_status_05).state) lv_obj_clear_flag(id(lbl_header_bedroom_light), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(lbl_header_bedroom_light), LV_OBJ_FLAG_HIDDEN);
+          if (id(light_status_06).state) lv_obj_clear_flag(id(lbl_header_bathroom_light), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(lbl_header_bathroom_light), LV_OBJ_FLAG_HIDDEN);
+          // ---- HVAC header status ----
+          if (id(climate_hvac_action).state == "cooling") {
+            lv_obj_clear_flag(id(lbl_header_hvac_cooling), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(lbl_header_hvac_heating), LV_OBJ_FLAG_HIDDEN);
+          } else if (id(climate_hvac_action).state == "heating") {
+            lv_obj_add_flag(id(lbl_header_hvac_cooling), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(lbl_header_hvac_heating), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(lbl_header_hvac_cooling), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(lbl_header_hvac_heating), LV_OBJ_FLAG_HIDDEN);
+          }
+          // ---- Covers / Shades ----
+          auto update_cover = [](auto status, auto btn, auto lbl) {
+            if (status->state == "open") {
+              lv_obj_add_state(btn, LV_STATE_CHECKED);
+              lv_label_set_text(lbl, "\U000F1011");
+              lv_obj_set_style_text_color(lbl, lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(btn, LV_STATE_CHECKED);
+              lv_label_set_text(lbl, "\U000F1A6C");
+              lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFFFFF), 0);
+            }
+          };
+          update_cover(id(cover_status_01), id(btn_cover_01), id(lbl_cover_icon_01));
+          update_cover(id(cover_status_02), id(btn_cover_02), id(lbl_cover_icon_02));
+          update_cover(id(cover_status_03), id(btn_cover_03), id(lbl_cover_icon_03));
+          // ---- Fans ----
+          auto update_fan = [](auto status, auto btn, auto lbl) {
+            if (status->state == "on") {
+              lv_obj_add_state(btn, LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(lbl, lv_color_hex(0xCC9900), 0);
+            } else {
+              lv_obj_clear_state(btn, LV_STATE_CHECKED);
+              lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFFFFF), 0);
+            }
+          };
+          update_fan(id(fan_status_01), id(btn_fan_01), id(lbl_fan_icon_01));
+          update_fan(id(fan_status_02), id(btn_fan_02), id(lbl_fan_icon_02));
+          update_fan(id(fan_status_03), id(btn_fan_03), id(lbl_fan_icon_03));
+          // ---- Weather ----
+          char buf[64];
+          if (!isnan(id(outdoor_temp).state)) {
+            sprintf(buf, "Temperature: %.0f°F", id(outdoor_temp).state);
+            lv_label_set_text(id(lbl_weather_temp), buf);
+          } else {
+            lv_label_set_text(id(lbl_weather_temp), "Temperature: --°F");
+          }
+          if (!isnan(id(weather_humidity)->state)) {
+            sprintf(buf, "Humidity: %.0f%%", id(weather_humidity)->state);
+            lv_label_set_text(id(lbl_weather_humidity), buf);
+          }
+          if (!isnan(id(weather_wind_speed)->state)) {
+            if (!isnan(id(weather_wind_bearing)->state)) {
+              sprintf(buf, "Wind: %.1f mph @ %.0f°", id(weather_wind_speed)->state, id(weather_wind_bearing)->state);
+            } else {
+              sprintf(buf, "Wind: %.1f mph", id(weather_wind_speed)->state);
+            }
+            lv_label_set_text(id(lbl_weather_wind), buf);
+          }
+          if (!id(barometric_pressure_trend).state.empty()) {
+            sprintf(buf, "Pressure: %s", id(barometric_pressure_trend).state.c_str());
+            lv_label_set_text(id(lbl_weather_pressure), buf);
+          } else {
+            lv_label_set_text(id(lbl_weather_pressure), "Pressure: --");
+          }
+          if (!id(noaa_tides).state.empty()) {
+            lv_label_set_text(id(lbl_weather_tide), id(noaa_tides).state.c_str());
+          } else {
+            lv_label_set_text(id(lbl_weather_tide), "--");
+          }
+          if (!id(weather_condition)->state.empty()) {
+            lv_label_set_text(id(lbl_weather_condition), id(weather_condition)->state.c_str());
+            const char *icon = "\U000F0595";
+            std::string cond = id(weather_condition)->state;
+            if (cond == "sunny" || cond == "clear" || cond == "clearsky") icon = "\U000F0599";
+            else if (cond == "partlycloudy" || cond == "partly_cloudy") icon = "\U000F0595";
+            else if (cond == "cloudy") icon = "\U000F0590";
+            else if (cond == "rainy" || cond == "light-rain" || cond == "rain") icon = "\U000F0597";
+            else if (cond == "pouring" || cond == "heavy-rain") icon = "\U000F0596";
+            else if (cond == "snowy" || cond == "snow") icon = "\U000F0598";
+            else if (cond == "fog" || cond == "mist") icon = "\U000F0591";
+            else if (cond == "clear-night" || cond == "night") icon = "\U000F0594";
+            lv_label_set_text(id(lbl_weather_icon), icon);
+          }
+          // ---- Thermostat ----
+          if (!isnan(id(climate_target_temp).state)) {
+            int arc_val = (int)(id(climate_target_temp).state * 10);
+            int current_arc_val = lv_arc_get_value(id(th_setpoint_arc));
+            if (!lv_obj_has_state(id(th_setpoint_arc), LV_STATE_PRESSED) && abs(current_arc_val - arc_val) > 5) {
+              lv_arc_set_value(id(th_setpoint_arc), arc_val);
+            }
+            snprintf(buf, sizeof(buf), "%.1f°", id(climate_target_temp).state);
+            lv_label_set_text(id(th_setpoint_label), buf);
+          } else {
+            lv_label_set_text(id(th_setpoint_label), "--.-°");
+          }
+          if (!isnan(id(climate_current_temp).state)) {
+            snprintf(buf, sizeof(buf), "%.1f°", id(climate_current_temp).state);
+            lv_label_set_text(id(th_temperature_label), buf);
+          } else {
+            lv_label_set_text(id(th_temperature_label), "--.-°");
+          }
+          if (!id(climate_hvac_action).state.empty()) {
+            lv_label_set_text(id(th_action_label), id(climate_hvac_action).state.c_str());
+          } else {
+            lv_label_set_text(id(th_action_label), "--");
+          }
+          if (!id(climate_entity_state).state.empty()) {
+            if (id(climate_entity_state).state == "heat") {
+              lv_label_set_text(id(th_mode_label), "HEAT");
+            } else if (id(climate_entity_state).state == "cool") {
+              lv_label_set_text(id(th_mode_label), "COOL");
+            } else {
+              lv_label_set_text(id(th_mode_label), "OFF");
+            }
+          } else {
+            lv_label_set_text(id(th_mode_label), "OFF");
+          }
+          // ---- Thermostat Arc Color & Mode Button Highlighting ----
+          if (id(climate_entity_state).state == "off") {
+            lv_obj_set_style_arc_color(id(th_setpoint_arc), lv_color_hex(0x666666), LV_PART_INDICATOR);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_off_icon), lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_cool_icon), lv_color_hex(0x666666), 0);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_heat_icon), lv_color_hex(0x666666), 0);
+          } else if (id(climate_entity_state).state == "cool") {
+            lv_obj_set_style_arc_color(id(th_setpoint_arc), lv_color_hex(0x15499E), LV_PART_INDICATOR);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_off_icon), lv_color_hex(0x666666), 0);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_cool_icon), lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_heat_icon), lv_color_hex(0x666666), 0);
+          } else if (id(climate_entity_state).state == "heat") {
+            lv_obj_set_style_arc_color(id(th_setpoint_arc), lv_color_hex(0xFF6B35), LV_PART_INDICATOR);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_off_icon), lv_color_hex(0x666666), 0);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_cool_icon), lv_color_hex(0x666666), 0);
+            lv_obj_set_style_text_color(id(lbl_hvac_mode_heat_icon), lv_color_hex(0xFFFFFF), 0);
+          }
+          // ---- HVAC Fan Button ----
+          if (id(climate_fan_status).state) {
+            lv_obj_add_state(id(btn_hvac_fan), LV_STATE_CHECKED);
+            lv_obj_set_style_text_color(id(lbl_hvac_fan_icon), lv_color_hex(0xFFFFFF), 0);
+          } else {
+            lv_obj_clear_state(id(btn_hvac_fan), LV_STATE_CHECKED);
+            lv_obj_set_style_text_color(id(lbl_hvac_fan_icon), lv_color_hex(0x666666), 0);
+          }
+          // ---- Media Player ----
+          if (!id(mp_title).state.empty()) {
+            lv_label_set_text(id(lbl_media_title), id(mp_title).state.c_str());
+          } else {
+            lv_label_set_text(id(lbl_media_title), "--");
+          }
+          if (!id(mp_artist).state.empty()) {
+            lv_label_set_text(id(lbl_media_artist), id(mp_artist).state.c_str());
+          } else {
+            lv_label_set_text(id(lbl_media_artist), "--");
+          }
+          if (!id(mp_album).state.empty()) {
+            lv_label_set_text(id(lbl_media_album), id(mp_album).state.c_str());
+          } else {
+            lv_label_set_text(id(lbl_media_album), "");
+          }
+          // ---- Utilities ----
+          char util_buf[128];
+          if (!isnan(id(util_amps).state)) {
+            snprintf(util_buf, sizeof(util_buf), "Amps: %.1f", id(util_amps).state);
+            lv_label_set_text(id(lbl_util_amps), util_buf);
+          } else {
+            lv_label_set_text(id(lbl_util_amps), "Amps: --");
+          }
+          if (!isnan(id(util_chiller).state)) {
+            snprintf(util_buf, sizeof(util_buf), "Chiller: %.1f°F", id(util_chiller).state);
+            lv_label_set_text(id(lbl_util_chiller), util_buf);
+          } else {
+            lv_label_set_text(id(lbl_util_chiller), "Chiller: --");
+          }
+          if (!id(util_dehumidifier_action).state.empty()) {
+            snprintf(util_buf, sizeof(util_buf), "Dehumidifier: %s", id(util_dehumidifier_action).state.c_str());
+            lv_label_set_text(id(lbl_util_dehumidifier), util_buf);
+          } else {
+            lv_label_set_text(id(lbl_util_dehumidifier), "Dehumidifier: --");
+          }
+          // ---- Duke Switch ----
+          if (id(duke_switch_status).state) {
+            lv_obj_add_state(id(btn_auto_02), LV_STATE_CHECKED);
+            lv_obj_set_style_text_color(id(lbl_auto_icon_02), lv_color_hex(0xCC9900), 0);
+          } else {
+            lv_obj_clear_state(id(btn_auto_02), LV_STATE_CHECKED);
+            lv_obj_set_style_text_color(id(lbl_auto_icon_02), lv_color_hex(0xFFFFFF), 0);
+          }
+          // ---- Quick Button Updates ----
+          if (id(quick_btn_01_status).state == "open") {
+            lv_obj_add_state(id(quick_btn_01), LV_STATE_CHECKED);
+            lv_label_set_text(id(lbl_quick_btn_01), "\U000F1011");
+            lv_obj_set_style_text_color(id(lbl_quick_btn_01), lv_color_hex(0xFFFFFF), 0);
+          } else {
+            lv_obj_clear_state(id(quick_btn_01), LV_STATE_CHECKED);
+            lv_label_set_text(id(lbl_quick_btn_01), "\U000F1A6C");
+            lv_obj_set_style_text_color(id(lbl_quick_btn_01), lv_color_hex(0xFFFFFF), 0);
+          }
+          if (id(quick_btn_02_status).state) {
+            lv_obj_add_state(id(quick_btn_02), LV_STATE_CHECKED);
+            lv_label_set_text(id(lbl_quick_btn_02), "\U000F0335");
+            lv_obj_set_style_text_color(id(lbl_quick_btn_02), lv_color_hex(0xFFFFFF), 0);
+          } else {
+            lv_obj_clear_state(id(quick_btn_02), LV_STATE_CHECKED);
+            lv_label_set_text(id(lbl_quick_btn_02), "\U000F0336");
+            lv_obj_set_style_text_color(id(lbl_quick_btn_02), lv_color_hex(0xFFFFFF), 0);
+          }
