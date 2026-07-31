@@ -885,6 +885,7 @@ sensor:
   - platform: wifi_signal
     name: "WiFi Signal Percent"
     id: wifi_signal_percent
+    device_class: ""
     update_interval: 60s
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
