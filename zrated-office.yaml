@@ -1,0 +1,76 @@
+# =================================================================
+# zrated-office.yaml (condensed - local file)
+#
+# Device-specific identity, secrets, network config, and entity
+# substitutions for the Office panel. All shared/repeatable behavior
+# (display, LVGL pages, sensors, images, fonts, etc.) lives in
+# zrated-base.yaml, pulled in below via `packages:`.
+#
+# NOTE: remote packages cannot contain !secret lookups, so wifi:,
+# api:, and ota: must stay here, not in zrated-base.yaml.
+# =================================================================
+
+packages:
+  remote_package:
+    url: https://github.com/zembrzycki/zrated-scene-controller
+    ref: main
+    files:
+      - zrated-base.yaml
+    refresh: 300s
+
+# Only the substitutions that genuinely vary for this room. Everything
+# else (lights, weather, climate, media player, automations, etc.) uses
+# the shared defaults defined in zrated-base.yaml - no need to repeat
+# them here. ESPHome merges packages first, then applies same-named
+# substitutions from this file on top, so these 10 keys override just
+# the room-specific defaults.
+substitutions:
+  ble_presence_area: "Office"
+
+  # Quick Access Footer Buttons
+  quick_btn_01_entity: "cover.somfy_office"
+  quick_btn_01_type: "cover"
+  quick_btn_01_icon: "\U000F1A6C"
+  quick_btn_02_entity: "light.office_lamp"
+  quick_btn_02_type: "light"
+  quick_btn_02_icon: "\U000F0336"
+  quick_btn_03_entity: "media_player.kitchen"
+  quick_btn_03_type: "media"
+  quick_btn_03_icon: "\U000F075A"
+
+#===============================================================
+esphome:
+  name: zrated-office
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  #domain: ".7p.net"
+  fast_connect: true
+  reboot_timeout: 15min
+
+ota:
+  platform: esphome
+  password: !secret ota_pass
+
+api:
+  on_client_connected:
+    - if:
+        condition:
+          lambda: 'return (0 == client_info.find("Home Assistant "));'
+        then:
+          - lvgl.widget.show: lbl_hastatus
+  on_client_disconnected:
+    - if:
+        condition:
+          lambda: 'return (0 == client_info.find("Home Assistant "));'
+        then:
+          - lvgl.widget.hide: lbl_hastatus
+  services:
+    - service: notification_show
+      then:
+        - lambda: |-
+            lv_obj_clear_flag(id(alert_overlay), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_opa(id(footer_bar), LV_OPA_50, 0);
+        - light.turn_on: display_backlight
+        - lvgl.resume:
