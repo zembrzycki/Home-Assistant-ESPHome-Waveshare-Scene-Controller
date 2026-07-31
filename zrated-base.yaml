@@ -5,11 +5,12 @@
 # panels (ESP32-S3-TOUCH-LCD-4.3 / Waveshare board). Pulled in by each
 # device's local YAML via `packages:`.
 #
-# Every substitution below has a placeholder default so this file is
-# valid on its own. Each device's local YAML MUST override every
-# "REPLACE_ME" value (and should review the cosmetic defaults) via its
-# own top-level `substitutions:` block - per ESPHome's packages docs,
-# substitutions in the including (local) file override same-named
+# Every substitution below defaults to the Office panel's real values,
+# so a device that defines no substitutions at all inherits Office's
+# config exactly. Other rooms override whichever keys differ (at
+# minimum: ble_presence_area and the three quick_btn_* groups) in
+# their own top-level `substitutions:` block - per ESPHome's packages
+# docs, substitutions in the including (local) file override same-named
 # substitutions defined here.
 #
 # Do NOT put any !secret lookups in this file - ESPHome does not
@@ -18,11 +19,12 @@
 # =================================================================
 
 substitutions:
-  # Shared across the whole house - defaulted here to real values, since
-  # most entities (lights, weather, climate, media player, automations)
-  # are the same regardless of which room's panel is asking. Only the
-  # keys explicitly marked REPLACE_ME below genuinely vary per room and
-  # must be overridden in each device's local YAML.
+  # Defaulted to the Office panel's real values. A device's local YAML
+  # that defines no substitutions at all will behave exactly like the
+  # Office panel. Override any of these per-device (in that device's own
+  # substitutions: block) for rooms that differ - ble_presence_area and
+  # the three quick_btn_* groups are the ones most likely to need it,
+  # since those are room-specific by nature.
   #
   # Compile-time fallback only for online_image.url (ESPHome requires a
   # literal, valid URL at build time). The real value is pushed at
@@ -33,8 +35,7 @@ substitutions:
 
   # BLE Presence Device - same tracked device (phone) for every panel.
   ble_presence_device: "device_tracker.ble_iphone17_bermuda_tracker"
-  # Genuinely varies per room - override in each device's local YAML.
-  ble_presence_area: "REPLACE_ME_area"
+  ble_presence_area: "Office"
 
   # Internet ISP Status
   router_isp: "sensor.router_isp"
@@ -115,14 +116,14 @@ substitutions:
   automation_name_04: "Sonos Group All"
 
   # Quick Access Footer Buttons - genuinely vary per room (each panel's
-  # shortcuts reflect that room). Override all nine in local YAML.
-  quick_btn_01_entity: "cover.REPLACE_ME"
+  # shortcuts should reflect that room). Override all nine per device.
+  quick_btn_01_entity: "cover.somfy_office"
   quick_btn_01_type: "cover"
   quick_btn_01_icon: "\U000F1A6C"
-  quick_btn_02_entity: "light.REPLACE_ME"
+  quick_btn_02_entity: "light.office_lamp"
   quick_btn_02_type: "light"
   quick_btn_02_icon: "\U000F0336"
-  quick_btn_03_entity: "media_player.REPLACE_ME"
+  quick_btn_03_entity: "media_player.kitchen"
   quick_btn_03_type: "media"
   quick_btn_03_icon: "\U000F075A"
 
