@@ -201,6 +201,12 @@ For backlight dimming, a jumper need to be soldered to test pad "BL" to a data p
 
 ![IMG_2020](https://github.com/user-attachments/assets/ab79999b-c92d-4ab9-99e3-9d4ea39b4a72)
 
+## Encoder
+Rotary encoder A/B	SD pins 3/5 → GPIO11/12	native
+Button	SD pin 2 → EXIO4 (CH422G I2C expander)
+
+## Speaker
+Passive piezo (LEDC tone)	SD pin 7 → GPIO13	native, PWM-capable
 
 
 ## 📝 License
