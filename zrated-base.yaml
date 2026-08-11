@@ -352,7 +352,7 @@ output:
 rtttl:
   id: piezo_rtttl
   output: speaker_pwm
-  gain: 100%
+  gain: 50%
 light:
   - platform: monochromatic
     output: backlight_pwm
