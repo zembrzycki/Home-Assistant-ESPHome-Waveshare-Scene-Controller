@@ -297,7 +297,7 @@ button:
             rtttl.is_playing
           then:
             - rtttl.stop
-      - rtttl.play: ${notification_chime_bongs}
+      - rtttl.play: ${notification_chime}
 display:
   - platform: mipi_rgb
     model: ESP32-S3-TOUCH-LCD-4.3
