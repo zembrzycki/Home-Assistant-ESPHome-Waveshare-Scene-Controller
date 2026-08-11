@@ -17,7 +17,6 @@
 # support secrets inside remote/git packages. wifi:, api:, and ota:
 # stay in each device's local YAML.
 # =================================================================
-
 substitutions:
   # Defaulted to the Office panel's real values. A device's local YAML
   # that defines no substitutions at all will behave exactly like the
@@ -32,14 +31,11 @@ substitutions:
   ha_base_url: "http://ha.7p.net"
   # HA sensor entity that reports the live, fully-resolved album art URL.
   esphome_image_url_entity: "sensor.album_art_for_media_player_kitchen_esphome_image_url"
-
   # BLE Presence Device - same tracked device (phone) for every panel.
   ble_presence_device: "device_tracker.ble_iphone17_bermuda_tracker"
   ble_presence_area: "Office"
-
   # Internet ISP Status
   router_isp: "sensor.router_isp"
-
   # Light Buttons
   light_entity_01: "light.kitchen_counter"
   light_entity_02: "light.living_lamp"
@@ -60,7 +56,6 @@ substitutions:
   light_group_04: "light.office_lights"
   light_group_05: "light.bedroom_lights"
   light_group_06: "light.bathroom_lights"
-
   # Covers / Shades
   cover_entity_01: "cover.somfy_bedroom"
   cover_entity_02: "cover.somfy_office"
@@ -68,7 +63,6 @@ substitutions:
   cover_name_01: "Bedroom"
   cover_name_02: "Office"
   cover_name_03: "Dining"
-
   # Ceiling Fans
   fan_entity_01: "fan.fan_bedroom"
   fan_entity_02: "fan.fan_office"
@@ -76,7 +70,6 @@ substitutions:
   fan_name_01: "Bedroom"
   fan_name_02: "Office"
   fan_name_03: "Dining"
-
   # Climate
   climate_entity_01: "climate.nsp3_thermostat"
   hvac_fan_switch: "switch.nsp3_relay_2"
@@ -84,15 +77,12 @@ substitutions:
   hvac_chiller: "sensor.hvac_supply_water_temperature"
   hvac_dehumidifier: "humidifier.dehumidifier"
   total_amps: "sensor.current_amps_2"
-
   # Weather
   weather_entity: "weather.beacon"
   barometric_pressure_trend: "sensor.barometric_pressure_trend"
   noaa_tides: "sensor.noaa_tides"
-
   # Outdoor Temperature
   outdoor_temperature: "sensor.climate_outdoor_temperature"
-
   # Media Player
   media_player_entity: "media_player.kitchen"
   sonos_volume_down: "script.sonos_volume_down"
@@ -104,7 +94,6 @@ substitutions:
   sonos_name_01: "BPM"
   sonos_name_02: "Diplo"
   sonos_name_03: "Chill"
-
   # Automations
   automation_script_01: "script.roborock_clean"
   automation_switch_02: "switch.power_duke"
@@ -114,7 +103,11 @@ substitutions:
   automation_name_02: "Duke Router"
   automation_name_03: "Scene: Party"
   automation_name_04: "Sonos Group All"
-
+  # Notification chime (RTTTL), played through the piezo speaker as a
+  # preamble right before the on-screen alert is shown. Swap which one
+  # is used in button: -> show_notification_btn -> rtttl.play below.
+  notification_chime: "beep:d=8,o=6,b=180:c,p,c"
+  notification_chime_bongs: "bong:d=4,o=4,b=90:c,8p,c,8p,c"
   # Quick Access Footer Buttons - genuinely vary per room (each panel's
   # shortcuts should reflect that room). Override all nine per device.
   quick_btn_01_entity: "cover.somfy_office"
@@ -126,7 +119,6 @@ substitutions:
   quick_btn_03_entity: "media_player.kitchen"
   quick_btn_03_type: "media"
   quick_btn_03_icon: "\U000F075A"
-
 #===============================================================
 esphome:
   platformio_options:
@@ -284,11 +276,28 @@ button:
     name: "Show Notification"
     id: show_notification_btn
     on_press:
+      - if:
+          condition:
+            rtttl.is_playing
+          then:
+            - rtttl.stop
+      - rtttl.play: ${notification_chime}
       - lambda: |-
           lv_obj_clear_flag(id(alert_overlay), LV_OBJ_FLAG_HIDDEN);
           lv_obj_set_style_opa(id(footer_bar), LV_OPA_50, 0);
       - light.turn_on: display_backlight
       - lvgl.resume:
+  - platform: template
+    name: "Test Notification Chime"
+    id: test_notification_chime_btn
+    entity_category: config
+    on_press:
+      - if:
+          condition:
+            rtttl.is_playing
+          then:
+            - rtttl.stop
+      - rtttl.play: ${notification_chime}
 display:
   - platform: mipi_rgb
     model: ESP32-S3-TOUCH-LCD-4.3
@@ -332,6 +341,18 @@ output:
     min_power: 0.0
     zero_means_zero: true
     inverted: true
+  # Passive piezo speaker. Freed up by moving the encoder pushbutton
+  # (previously here on native GPIO13 / SD header pin 7 / MISO) over to
+  # the CH422G I2C expander (EXIO4 / SD header pin 2 / SDCS) - see the
+  # "Encoder Switch" binary_sensor below. rtttl needs a real LEDC-capable
+  # GPIO to generate a PWM tone; the CH422G expander can't do that.
+  - platform: ledc
+    pin: GPIO13
+    id: speaker_pwm
+rtttl:
+  id: piezo_rtttl
+  output: speaker_pwm
+  gain: 70%
 light:
   - platform: monochromatic
     output: backlight_pwm
@@ -488,10 +509,9 @@ text:
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO13
-      mode:
-        input: true
-        pullup: true
+      ch422g: ch422g_hub
+      number: 4
+      mode: INPUT
       inverted: true
     id: encoder_switch
     name: "Encoder Switch"
@@ -504,8 +524,6 @@ binary_sensor:
           service: media_player.media_play_pause
           data:
             entity_id: ${media_player_entity}
-
-
   - platform: homeassistant
     id: light_status_01
     entity_id: ${light_group_01}
@@ -877,7 +895,6 @@ sensor:
           service: script.turn_on
           data:
             entity_id: ${sonos_volume_down}
-
   - platform: wifi_signal
     name: "WiFi Signal"
     id: wifi_signal_db
