@@ -297,7 +297,7 @@ button:
             rtttl.is_playing
           then:
             - rtttl.stop
-      - rtttl.play: ${notification_chime}
+      - rtttl.play: ${notification_chime_bongs}
 display:
   - platform: mipi_rgb
     model: ESP32-S3-TOUCH-LCD-4.3
@@ -352,7 +352,7 @@ output:
 rtttl:
   id: piezo_rtttl
   output: speaker_pwm
-  gain: 70%
+  gain: 100%
 light:
   - platform: monochromatic
     output: backlight_pwm
