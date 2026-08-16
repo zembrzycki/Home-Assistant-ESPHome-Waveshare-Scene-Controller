@@ -34,8 +34,8 @@ substitutions:
   # BLE Presence Device - same tracked device (phone) for every panel.
   ble_presence_device: "device_tracker.ble_iphone17_bermuda_tracker"
   ble_presence_area: "Office"
-  # Internet ISP Status
-  router_isp: "sensor.router_isp"
+# Internet ISP Status
+  router_isp: "sensor.network_router"
   # Light Buttons
   light_entity_01: "light.kitchen_counter"
   light_entity_02: "light.living_lamp"
@@ -862,9 +862,10 @@ text_sensor:
     entity_id: ${ble_presence_device}
     attribute: area
     internal: true
-  - platform: homeassistant
+- platform: homeassistant
     id: router_isp_status
     entity_id: ${router_isp}
+    attribute: isp_active
     internal: true
 sensor:
   - platform: rotary_encoder
