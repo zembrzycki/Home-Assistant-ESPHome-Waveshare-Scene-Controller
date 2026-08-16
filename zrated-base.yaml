@@ -862,7 +862,7 @@ text_sensor:
     entity_id: ${ble_presence_device}
     attribute: area
     internal: true
-- platform: homeassistant
+  - platform: homeassistant
     id: router_isp_status
     entity_id: ${router_isp}
     attribute: isp_active
